@@ -116,6 +116,12 @@ function getDaysRemainingInLahore() {
     return Math.max(1, daysRemaining);
 }
 
+// Track last focused heart and whether last interaction was keyboard
+let lastFocusedHeart = null;
+let lastInteractionWasKeyboard = false;
+window.addEventListener('keydown', () => { lastInteractionWasKeyboard = true; });
+window.addEventListener('mousedown', () => { lastInteractionWasKeyboard = false; });
+
 function isHeartUnlocked(day) {
     const daysRemaining = getDaysRemainingInLahore();
     // Heart unlocks when day >= daysRemaining
@@ -232,13 +238,19 @@ function generateHearts() {
         }
 
         wrapper.addEventListener('click', () => {
+            // mark interaction as mouse, record last focused heart, open modal
+            lastInteractionWasKeyboard = false;
             if (!isLocked) {
+                lastFocusedHeart = wrapper;
                 openModal(msg.title, msg.text);
             }
         });
 
         wrapper.addEventListener('keypress', (e) => {
             if ((e.key === 'Enter' || e.key === ' ') && !isLocked) {
+                // mark interaction as keyboard, record last focused heart, open modal
+                lastInteractionWasKeyboard = true;
+                lastFocusedHeart = wrapper;
                 openModal(msg.title, msg.text);
             }
         });
@@ -350,8 +362,17 @@ function openModal(title, text) {
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
 
+    // Blur any active heart so the focus ring doesn't persist behind it
+    try {
+        const active = document.activeElement;
+        if (active && active.classList && active.classList.contains('heart-wrapper')) {
+            active.blur();
+        }
+    } catch (e) { /* ignore */ }
+
     // Focus the close button for accessibility
-    document.querySelector('.close-btn').focus();
+    const closeBtn = document.querySelector('.close-btn');
+    if (closeBtn) closeBtn.focus();
 }
 
 function closeModal() {
@@ -359,8 +380,22 @@ function closeModal() {
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
 
-    // Return focus to the last clicked heart
-    document.querySelector('.heart-wrapper:not(.locked)').focus();
+    // Return focus to the last clicked/focused heart only if the user used keyboard
+    try {
+        if (lastInteractionWasKeyboard && lastFocusedHeart && document.body.contains(lastFocusedHeart) && !lastFocusedHeart.classList.contains('locked')) {
+            lastFocusedHeart.focus();
+        } else {
+            // move focus away from hearts to avoid a persistent focus ring
+            try {
+                document.body.setAttribute('tabindex', '-1');
+                document.body.focus();
+                document.body.removeAttribute('tabindex');
+            } catch (e) {
+                try { document.documentElement.focus(); } catch (e) {}
+            }
+        }
+    } catch (e) { /* ignore */ }
+    lastFocusedHeart = null;
 }
 
 // Close modal on Esc key
