@@ -1,109 +1,43 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Birthday Sky Preview</title>
-
-<style>
-    body {
-        margin: 0;
-        overflow: hidden;
-        background: radial-gradient(circle at top, #ffb7d1, #c38bff 40%, #6a4fbf 80%);
-        height: 100vh;
-        font-family: 'Helvetica', sans-serif;
-        color: white;
-    }
-
-    /* Twinkling stars background */
-    .twinkle {
-        position: absolute;
-        width: 2px;
-        height: 2px;
-        background: white;
-        border-radius: 50%;
-        animation: twinkle 2s infinite ease-in-out;
-        opacity: 0.6;
-    }
-
-    @keyframes twinkle {
-        0% { opacity: .2; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.8); }
-        100% { opacity: .2; transform: scale(1); }
-    }
-
-    /* Main clickable star */
-    .star {
-        position: absolute;
-        width: 22px;
-        height: 22px;
-        background: white;
-        border-radius: 50%;
-        box-shadow: 0 0 10px 4px rgba(255,255,255,0.7),
-                    0 0 25px 10px rgba(255,180,255,0.4);
-        cursor: pointer;
-        animation: pulse 2.5s infinite ease-in-out;
-    }
-
-    @keyframes pulse {
-        0% { transform: scale(1); opacity: 0.9; }
-        50% { transform: scale(1.25); opacity: 1; }
-        100% { transform: scale(1); opacity: 0.9; }
-    }
-
-    /* Message popup */
-    .messageBox {
-        position: absolute;
-        width: 75%;
-        left: 50%;
-        top: 60%;
-        transform: translateX(-50%);
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255,255,255,0.35);
-        backdrop-filter: blur(6px);
-        padding: 18px;
-        border-radius: 14px;
-        text-align: center;
-        font-size: 1rem;
-        line-height: 1.5;
-        box-shadow: 0 0 15px rgba(255,255,255,0.2);
-        display: none;
-    }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>7-Day Starry Countdown — For Seemal</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
+  <main class="container">
+    <header class="header">
+      <h1>✨ 7 Days for You ✨</h1>
+      <p class="sub">A heart a day — until your birthday, love.</p>
+    </header>
 
-<!-- Random background twinkles -->
-<script>
-    for (let i = 0; i < 80; i++) {
-        let s = document.createElement("div");
-        s.className = "twinkle";
-        s.style.left = Math.random() * 100 + "vw";
-        s.style.top = Math.random() * 100 + "vh";
-        s.style.animationDuration = (1.5 + Math.random()) + "s";
-        document.body.appendChild(s);
-    }
-</script>
+    <section class="sky" id="sky" aria-label="Starry sky">
+      <canvas id="textCanvas" width="800" height="240" style="display:none;"></canvas>
+      <div class="moon" aria-hidden="true"></div>
+      <div id="twinkles" class="twinkles" aria-hidden="true"></div>
+      <div id="stars" class="stars" role="list" aria-live="polite"></div>
+      <div id="letterHolder" class="letter-holder" aria-hidden="true"></div>
+    </section>
 
-<!-- Main preview star -->
-<div class="star" id="star1" style="left: 48%; top: 38%;"></div>
+    <div id="messageModal" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <button id="closeBtn" class="close" aria-label="close">✕</button>
+        <h2 id="modalTitle">Day</h2>
+        <p id="modalMessage" class="modal-text"></p>
+        <footer class="modal-foot">
+          <small id="modalDate"></small>
+        </footer>
+      </div>
+    </div>
 
-<!-- Message popup -->
-<div class="messageBox" id="msg1">
-    You make distance feel small.  
-    <br><br>
-    I love you more than you know.
-</div>
+    <footer class="footer">
+      <p id="statusText"></p>
+      <p class="hint">Tip: Open this link on your phone browser or tap it in WhatsApp.</p>
+    </footer>
+  </main>
 
-<script>
-    const star = document.getElementById("star1");
-    const msg = document.getElementById("msg1");
-
-    star.onclick = () => {
-        msg.style.display = "block";
-    };
-</script>
-
+  <script src="script.js"></script>
 </body>
 </html>
