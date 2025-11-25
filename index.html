@@ -3,35 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Starry Countdown — For Seemal</title>
+  <title>7-Day Starry Countdown — For Seemal</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="wrap">
-    <header class="top">
+  <main class="container">
+    <header class="header">
       <h1>✨ 7 Days for You ✨</h1>
-      <p class="subtitle">A heart a day — until your birthday, Seemal.</p>
+      <p class="sub">A heart a day — until your birthday, love.</p>
     </header>
 
-    <section id="sky" class="sky" aria-label="Starry sky">
-      <canvas id="lettersCanvas" class="canvas-layer" aria-hidden="true"></canvas>
-      <div id="twinkles" class="twinkles" aria-hidden="true"></div>
-      <div id="mainStars" class="main-stars" role="list"></div>
+    <section class="sky" id="sky" aria-label="Starry sky">
+      <canvas id="textCanvas" width="800" height="240" style="display:none;"></canvas>
       <div class="moon" aria-hidden="true"></div>
+      <div id="twinkles" class="twinkles" aria-hidden="true"></div>
+      <div id="stars" class="stars" role="list" aria-live="polite"></div>
+      <div id="letterHolder" class="letter-holder" aria-hidden="true"></div>
     </section>
 
-    <div id="modal" class="modal" aria-hidden="true">
-      <div class="card">
-        <button id="close" class="close">✕</button>
+    <div id="messageModal" class="modal" aria-hidden="true">
+      <div class="modal-content">
+        <button id="closeBtn" class="close" aria-label="close">✕</button>
         <h2 id="modalTitle">Day</h2>
-        <p id="modalText" class="modal-text"></p>
-        <footer class="meta"><small id="modalDate"></small></footer>
+        <p id="modalMessage" class="modal-text"></p>
+        <footer class="modal-foot">
+          <small id="modalDate"></small>
+        </footer>
       </div>
     </div>
 
-    <footer class="foot">
-      <p id="status"></p>
-      <p class="hint">Open in your phone browser or tap the link in WhatsApp.</p>
+    <footer class="footer">
+      <p id="statusText"></p>
+      <p class="hint">Tip: Open this link on your phone browser or tap it in WhatsApp.</p>
     </footer>
   </main>
 
