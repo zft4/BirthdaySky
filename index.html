@@ -1,43 +1,248 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>7-Day Starry Countdown — For Seemal</title>
-  <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Birthday Demo V5 (Final Look)</title>
+    <style>
+        /* --- 1. Reset & Setup --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            /* MODIFIED: Deeper, less intense romantic gradient */
+            background: linear-gradient(to bottom, #05010a 0%, #1c0320 50%, #3e0e28 100%);
+            min-height: 100vh;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- 2. The Starry Sky --- */
+        canvas {
+            position: fixed;
+            top: 0; left: 0; z-index: 0;
+            filter: blur(0.3px) contrast(1.1); /* Slightly less contrast/blur */
+        }
+
+        /* --- 3. The Heart Grid Container --- */
+        .heart-grid {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 35px; 
+            max-width: 420px;
+            padding: 30px;
+        }
+
+        /* --- 4. The Heart Item (The Star-Heart) --- */
+        .heart-wrapper {
+            position: relative;
+            cursor: pointer;
+            width: 85px; 
+            height: 85px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: float 7s ease-in-out infinite;
+        }
+        
+        .heart-wrapper:nth-child(odd) { animation-delay: 0s; }
+        .heart-wrapper:nth-child(even) { animation-delay: 2s; }
+
+        .heart-svg {
+            fill: #ff6b8b;
+            width: 100%;
+            height: 100%;
+            /* GLOW PRESERVED: Layered bright drop-shadows to create a radiant halo */
+            filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)) 
+                    drop-shadow(0 0 20px rgba(255, 77, 109, 0.8))
+                    drop-shadow(0 0 30px rgba(255, 20, 60, 0.5));
+            animation: star-beat 2s ease-in-out infinite;
+        }
+
+        /* The Number Inside */
+        .day-number {
+            position: absolute;
+            color: white;
+            font-size: 1.8rem;
+            font-weight: bold;
+            font-style: italic;
+            pointer-events: none;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 2px 4px rgba(0,0,0,0.3);
+            margin-top: -5px;
+        }
+
+        /* Active State: Intense flash */
+        .heart-wrapper:active .heart-svg { 
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 1)) 
+                    drop-shadow(0 0 40px rgba(255, 100, 150, 1));
+            transform: scale(1.1);
+            transition: all 0.1s;
+        }
+
+        /* --- 5. Modal (Glassmorphism) --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 2, 15, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .card {
+            background: rgba(255, 230, 240, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2rem;
+            border-radius: 25px;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+            color: #fff0f5;
+            box-shadow: 0 30px 50px rgba(0,0,0,0.7);
+            transform: scale(0.9);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal-overlay.active .card { transform: scale(1); }
+
+        h2 { color: #ffd1dc; margin-bottom: 15px; text-shadow: 0 0 10px rgba(255, 77, 109, 0.5); }
+        p { line-height: 1.6; margin-bottom: 25px; font-family: -apple-system, sans-serif; font-size: 1.1rem; }
+        .close-btn {
+            background: linear-gradient(45deg, #ff4d6d, #ff8fa3);
+            border: none; color: white;
+            padding: 12px 30px; border-radius: 50px; font-weight: bold;
+            box-shadow: 0 5px 15px rgba(255, 77, 109, 0.4);
+        }
+
+        /* --- Animations --- */
+        @keyframes star-beat {
+            0% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 20px rgba(255, 77, 109, 0.8)); }
+            15% { transform: scale(1.05); filter: drop-shadow(0 0 15px rgba(255, 255, 255, 1)) drop-shadow(0 0 35px rgba(255, 77, 109, 1)); }
+            30% { transform: scale(1.02); }
+            45% { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(255, 255, 255, 1)) drop-shadow(0 0 30px rgba(255, 77, 109, 0.9)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.9)) drop-shadow(0 0 20px rgba(255, 77, 109, 0.8)); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(-1deg); }
+            50% { transform: translateY(-12px) rotate(1deg); }
+        }
+    </style>
 </head>
 <body>
-  <main class="container">
-    <header class="header">
-      <h1>✨ 7 Days for You ✨</h1>
-      <p class="sub">A heart a day — until your birthday, love.</p>
-    </header>
 
-    <section class="sky" id="sky" aria-label="Starry sky">
-      <canvas id="textCanvas" width="800" height="240" style="display:none;"></canvas>
-      <div class="moon" aria-hidden="true"></div>
-      <div id="twinkles" class="twinkles" aria-hidden="true"></div>
-      <div id="stars" class="stars" role="list" aria-live="polite"></div>
-      <div id="letterHolder" class="letter-holder" aria-hidden="true"></div>
-    </section>
+    <canvas id="starCanvas"></canvas>
 
-    <div id="messageModal" class="modal" aria-hidden="true">
-      <div class="modal-content">
-        <button id="closeBtn" class="close" aria-label="close">✕</button>
-        <h2 id="modalTitle">Day</h2>
-        <p id="modalMessage" class="modal-text"></p>
-        <footer class="modal-foot">
-          <small id="modalDate"></small>
-        </footer>
-      </div>
+    <div class="heart-grid">
+        <div class="heart-wrapper" onclick="openModal('7 Days Left', 'Placeholder message for day 7.')">
+            <svg class="heart-svg" viewBox="0 0 32 29.6"><path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/></svg>
+            <span class="day-number">7</span>
+        </div>
+        <div class="heart-wrapper" onclick="openModal('6 Days Left', 'Placeholder message for day 6.')">
+            <svg class="heart-svg" viewBox="0 0 32 29.6"><path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/></svg>
+            <span class="day-number">6</span>
+        </div>
+        <div class="heart-wrapper" onclick="openModal('5 Days Left', 'Placeholder message for day 5.')">
+            <svg class="heart-svg" viewBox="0 0 32 29.6"><path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/></svg>
+            <span class="day-number">5</span>
+        </div>
+        <div class="heart-wrapper" onclick="openModal('4 Days Left', 'Placeholder message for day 4.')">
+            <svg class="heart-svg" viewBox="0 0 32 29.6"><path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/></svg>
+            <span class="day-number">4</span>
+        </div>
+        <div class="heart-wrapper" onclick="openModal('3 Days Left', 'Placeholder message for day 3.')">
+            <svg class="heart-svg" viewBox="0 0 32 29.6"><path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/></svg>
+            <span class="day-number">3</span>
+        </div>
+        <div class="heart-wrapper" onclick="openModal('2 Days Left', 'Placeholder message for day 2.')">
+            <svg class="heart-svg" viewBox="0 0 32 29.6"><path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/></svg>
+            <span class="day-number">2</span>
+        </div>
+        <div class="heart-wrapper" onclick="openModal('1 Day Left', 'Tomorrow is the big day!')">
+            <svg class="heart-svg" viewBox="0 0 32 29.6"><path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/></svg>
+            <span class="day-number">1</span>
+        </div>
     </div>
 
-    <footer class="footer">
-      <p id="statusText"></p>
-      <p class="hint">Tip: Open this link on your phone browser or tap it in WhatsApp.</p>
-    </footer>
-  </main>
+    <div class="modal-overlay" id="modal">
+        <div class="card">
+            <h2 id="modalTitle">Title</h2>
+            <p id="modalText">Message</p>
+            <button class="close-btn" onclick="closeModal()">Close</button>
+        </div>
+    </div>
 
-  <script src="script.js"></script>
+    <script>
+        // --- STAR LOGIC ---
+        const canvas = document.getElementById('starCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, stars = [];
+        
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            createStars();
+        }
+
+        function createStars() {
+            stars = [];
+            const count = Math.floor(width * height / 800); 
+            for (let i = 0; i < count; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 2.5 + 0.5,
+                    opacity: Math.random(),
+                    speed: Math.random() * 0.1 + 0.05
+                });
+            }
+        }
+
+        function animateStars() {
+            ctx.clearRect(0, 0, width, height);
+            // MODIFIED: Reduced shadow blur on background stars
+            ctx.shadowBlur = 5; 
+            ctx.shadowColor = "white";
+            ctx.fillStyle = "#fff5fa";
+            
+            stars.forEach(star => {
+                // MODIFIED: Slightly lower base opacity for background stars
+                ctx.globalAlpha = star.opacity * 0.8; 
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+                star.opacity += (Math.random() - 0.5) * 0.3;
+                if (star.opacity < 0) star.opacity = 0;
+                if (star.opacity > 1) star.opacity = 1;
+            });
+            ctx.shadowBlur = 0;
+            requestAnimationFrame(animateStars);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+        animateStars();
+
+        // --- Modal Logic ---
+        function openModal(title, text) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalText').innerText = text;
+            document.getElementById('modal').classList.add('active');
+        }
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+    </script>
 </body>
 </html>
