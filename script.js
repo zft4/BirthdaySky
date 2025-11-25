@@ -118,7 +118,10 @@ function getDaysRemainingInLahore() {
 
 function isHeartUnlocked(day) {
     const daysRemaining = getDaysRemainingInLahore();
-    return daysRemaining < day;
+    // Heart unlocks when day > daysRemaining
+    // E.g., if daysRemaining=7, no hearts unlock (7 > 7 is false)
+    // If daysRemaining=6, heart 7 unlocks (7 > 6 is true)
+    return day > daysRemaining;
 }
 
 function getUnlockedDays() {
@@ -135,6 +138,7 @@ function generateHearts() {
 
     // Heart-shaped constellation coordinates (normalized, centered, 0-1)
     // Upright heart with point at top, bulges at bottom
+    // Heart 7 at top, Heart 1 at bottom
     const heartCoords = [
         { x: 0.5, y: 0.82 }, // Top point (Day 7)
         { x: 0.22, y: 0.62 }, // Left upper (Day 6)
@@ -153,13 +157,17 @@ function generateHearts() {
     const gridH = Math.min(window.innerHeight * 0.55, 400);
 
     const daysRemaining = getDaysRemainingInLahore();
-    const currentDay = 7 - daysRemaining + 1;
+    // Current day is the heart that just unlocked or is about to unlock
+    // E.g., if daysRemaining=6, heart 7 just unlocked (7 > 6), so currentDay = 7
+    // If daysRemaining=7, no hearts unlocked yet, so currentDay = null
+    const currentDay = daysRemaining < 7 ? daysRemaining + 1 : null;
     const isOnBirthday = daysRemaining === 0;
 
     sortedMessages.forEach((msg, i) => {
         const isLocked = !isHeartUnlocked(msg.day);
-        const isPastDay = msg.day < currentDay && daysRemaining > 0 && !isOnBirthday;
-        const isCurrentDay = msg.day === currentDay && daysRemaining > 0 && !isOnBirthday;
+        // A heart is "past" if it's not the current one and it's unlocked
+        const isPastDay = !isLocked && msg.day !== currentDay && !isOnBirthday;
+        const isCurrentDay = msg.day === currentDay && !isOnBirthday;
         
         let classes = `heart-wrapper ${isLocked ? 'locked' : ''}`;
         if (isPastDay) classes += ' past-day';
