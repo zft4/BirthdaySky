@@ -428,41 +428,10 @@ function triggerSurpriseAnimation() {
         setTimeout(() => confetti.remove(), 5000);
     }
 
-    // Show special message (modal, not blocking)
-    const specialCard = document.createElement('div');
-    specialCard.className = 'card';
-    specialCard.style.position = 'fixed';
-    specialCard.style.zIndex = '150';
-    specialCard.style.left = '50%';
-    specialCard.style.top = '50%';
-    specialCard.style.transform = 'translate(-50%, -50%)';
-    specialCard.id = 'birthday-card';
-    specialCard.innerHTML = `
-        <h2>🎉 Happy Birthday Shumi! 🎉</h2>
-        <p>Your special day has arrived! May this year bring you endless joy, love, and all the happiness you deserve.</p>
-        <button class="close-btn">Close</button>
-    `;
-    document.body.appendChild(specialCard);
+    // Show the birthday message using the same modal overlay (so background blurs)
+    openModal('🎉 Happy Birthday Shumi! 🎉', 'Your special day has arrived! May this year bring you endless joy, love, and all the happiness you deserve.');
 
-    // Allow closing at any time
-    const closeBtn = specialCard.querySelector('.close-btn');
-    closeBtn.focus();
-    
-    const closeBirthdayCard = () => {
-        if (document.getElementById('birthday-card')) {
-            document.getElementById('birthday-card').remove();
-            generateHearts();
-        }
-    };
-    
-    closeBtn.addEventListener('click', closeBirthdayCard);
-    
-    const closeHandler = (e) => {
-        if (e.key === 'Escape' && document.getElementById('birthday-card')) {
-            closeBirthdayCard();
-        }
-    };
-    document.addEventListener('keydown', closeHandler);
+    // Note: modal close behavior is handled by the existing modal (close button / Esc)
 }
 
 function checkForSurpriseTime() {
