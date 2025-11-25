@@ -1,387 +1,367 @@
-// Full Soft Romantic Starry 7-Day Countdown
-// Features:
-// - 7 heart-shaped stars unlock from Nov 27 -> Dec 3 (based on Asia/Karachi time).
-// - On Dec 4 (Asia/Karachi) the sky animates stars into the text "Happy Birthday Seemal".
-// - ?unlock=all to reveal all days; ?preview=bb to force Dec 4 text transform for preview.
+/* Starry Countdown for Seemal
+   - 7 daily heart stars (Nov 27 -> Dec 3)
+   - Dec 4: transform into "Happy Birthday Seemal" drawn with twinkle stars
+   - Unlock logic uses Lahore timezone (Asia/Karachi)
+   - Testing shortcuts: ?unlock=all and ?demo=text
+*/
 
-(function () {
-  /* --------------------------
-     CONFIG
-  ---------------------------*/
-  const TIMEZONE = 'Asia/Karachi'; // Lahore
-  const BDAY_MONTH = 11; // December (0-indexed)
-  const BDAY_DATE = 4;
-  const MESSAGES = [
-    { title: "Day 1", note: "A tiny heart to start.", text: "Hey my princess — I love you more than you know." },
-    { title: "Day 2", note: "A little glow for you.", text: "I miss you more than life; thinking of you always." },
-    { title: "Day 3", note: "Halfway to the cake.", text: "You are my life — you make everything worth it." },
-    { title: "Day 4", note: "Another twinkle.", text: "You are my everything; I’m who I am today because of you." },
-    { title: "Day 5", note: "Almost there.", text: "I love you more — you make life softer and better." },
-    { title: "Day 6", note: "One more until your day.", text: "I miss you my darling — you’re my sweetheart." },
-    { title: "Day 7", note: "Final message.", text: "I love you forever and always. Happy birthday soon, my love." }
+(() => {
+  // ---------------------------
+  // CONFIG
+  // ---------------------------
+  const TARGET_NAME = 'Seemal';
+  // message texts (7). Uses user's tone / lines provided
+  const messages = [
+    { title: 'Day 1', text: "Hey my princess — I love you more than you know." },
+    { title: 'Day 2', text: "I miss you my darling; you are my everything." },
+    { title: 'Day 3', text: "You make life worth living — I'm so grateful for you." },
+    { title: 'Day 4', text: "I am who I am today because of you." },
+    { title: 'Day 5', text: "You are my life; I miss you more than life." },
+    { title: 'Day 6', text: "You're my sweetheart — I love you more, always." },
+    { title: 'Day 7', text: "Happy early birthday, my love — I love you forever and always." }
   ];
 
-  const NAME_TEXT = "Happy Birthday Seemal";
-  const MAX_TEXT_PARTICLES = 380; // number of stars to form text on Dec 4
+  // The planned star dates (we'll compute year-relative later)
+  // The final interactive day (message star) should be Dec 3 per request (Day 7 -> Dec 3).
+  // So the 7-day window is: start = Dec 3 - 6 = Nov 27 up to Dec 3 inclusive.
+  const TARGET_MONTH = 11; // December = 11 (JS months 0-indexed)
+  const TARGET_DAY = 4;    // Dec 4 is the birthday day (transformation day)
+  const DAYS_TOTAL = messages.length; // 7
 
-  /* --------------------------
-     DOM REFS
-  ---------------------------*/
-  const starsContainer = document.getElementById('stars');
-  const twinkles = document.getElementById('twinkles');
-  const modal = document.getElementById('messageModal');
+  // layout: constellation-like positions (percentages). 7 main hearts
+  const positions = [
+    {left: 18, top: 28},
+    {left: 32, top: 12},
+    {left: 46, top: 26},
+    {left: 60, top: 14},
+    {left: 76, top: 30},
+    {left: 62, top: 48},
+    {left: 36, top: 52}
+  ];
+
+  // ---------------------------
+  // DOM Refs
+  // ---------------------------
+  const mainStarsEl = document.getElementById('mainStars');
+  const twinklesEl = document.getElementById('twinkles');
+  const modal = document.getElementById('modal');
   const modalTitle = document.getElementById('modalTitle');
-  const modalMessage = document.getElementById('modalMessage');
+  const modalText = document.getElementById('modalText');
   const modalDate = document.getElementById('modalDate');
-  const closeBtn = document.getElementById('closeBtn');
-  const statusText = document.getElementById('statusText');
-  const letterHolder = document.getElementById('letterHolder');
-  const canvas = document.getElementById('textCanvas');
+  const closeBtn = document.getElementById('close');
+  const status = document.getElementById('status');
+  const canvas = document.getElementById('lettersCanvas');
 
-  /* --------------------------
-     Helpers: get current date/time in specified tz
-     We'll use Intl.DateTimeFormat().formatToParts to build a Date in that timezone.
-  ---------------------------*/
-  function nowInTZ(tz) {
-    const now = new Date();
-    const fmt = new Intl.DateTimeFormat('en-GB', {
-      timeZone: tz,
-      year: 'numeric', month: 'numeric', day: 'numeric',
-      hour: 'numeric', minute: 'numeric', second: 'numeric',
+  // ---------------------------
+  // helpers: get current Lahore date parts using Intl
+  // ---------------------------
+  function nowInLahoreParts() {
+    // returns an object { year, month (1-12), day, hour, minute, second, dateObj }
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Karachi',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
       hour12: false
     });
-    const parts = fmt.formatToParts(now).reduce((acc, p) => {
-      acc[p.type] = p.value;
-      return acc;
-    }, {});
-    // parts: { year, month, day, hour, minute, second }
-    return new Date(
-      Number(parts.year),
-      Number(parts.month) - 1,
-      Number(parts.day),
-      Number(parts.hour),
-      Number(parts.minute),
-      Number(parts.second)
-    );
+    const parts = fmt.formatToParts(new Date());
+    const map = {};
+    parts.forEach(p => map[p.type] = p.value);
+    const year = parseInt(map.year,10);
+    const month = parseInt(map.month,10);
+    const day = parseInt(map.day,10);
+    const hour = parseInt(map.hour,10);
+    const minute = parseInt(map.minute,10);
+    const second = parseInt(map.second,10);
+    // create a Date object using the components but in local timezone; we only use Y/M/D for day math
+    const dateObj = new Date(year, month-1, day, hour, minute, second);
+    return { year, month, day, hour, minute, second, dateObj };
   }
 
-  // get date-only (00:00) in tz
-  function dateOnlyInTZ(tz) {
-    const d = nowInTZ(tz);
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  function dateFromYMD(year, monthZeroBased, day) {
+    // returns a Date object representing that Y/M/D at 00:00:00 in **Lahore timezone** relative to UTC calculation.
+    // We'll represent as the *wall-clock* Y-M-D in Lahore by taking the parts and constructing a Date in local time.
+    // For comparisons we will compare Y/M/D by using formatToParts to avoid timezone shifting issues.
+    return { year, month: monthZeroBased+1, day }; // simple container
   }
 
-  function formatFriendly(d) {
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  // helper to format a Y-M-D object to friendly string using Intl with tz
+  function formatLahoreDate(year, monthOneBased, day) {
+    const tmp = new Date(year, monthOneBased-1, day);
+    return tmp.toLocaleDateString(undefined,{month:'short', day:'numeric'});
   }
 
-  /* --------------------------
-     Compute countdown window:
-     Start = birthday - 7 days (Nov 27 when bday Dec 4).
-     Unlocking: each day at 00:00 Lahore time becomes available.
-  ---------------------------*/
-  function computeDatesForYear(year) {
-    const birthday = new Date(year, BDAY_MONTH, BDAY_DATE, 0, 0, 0);
-    // if current tz date is after that birthday, we should use next year's birthday
-    const nowTz = nowInTZ(TIMEZONE);
-    if (nowTz > birthday) birthday.setFullYear(year + 1);
-    const start = new Date(birthday);
-    start.setDate(birthday.getDate() - 7); // start on Nov 27 for Dec 4 birthday
-    return { birthday, start };
-  }
-
-  function getUnlockedCount() {
-    const url = new URL(window.location.href);
-    if (url.searchParams.get('unlock') === 'all') return MESSAGES.length;
-    // preview param to force show dec4 transform for testing
-    if (url.searchParams.get('preview') === 'bb') return MESSAGES.length + 1; // force Dec4 mode
-
-    const nowTz = nowInTZ(TIMEZONE);
-    const { birthday, start } = computeDatesForYear(nowTz.getFullYear());
-    const oneDay = 24 * 60 * 60 * 1000;
-    const diff = Math.floor((stripTime(nowTz) - stripTime(start)) / oneDay);
-    if (diff < 0) return 0;
-    if (diff >= MESSAGES.length) return MESSAGES.length; // once all 7 unlocked, Dec4 will be next day
-    return diff + 1;
-  }
-
-  function isDec4InTZ() {
-    const nowTz = nowInTZ(TIMEZONE);
-    const { birthday } = computeDatesForYear(nowTz.getFullYear());
-    // check if current tz date is the birthday date (Dec 4)
-    const today = stripTime(nowTz);
-    return today.getFullYear() === birthday.getFullYear() &&
-           today.getMonth() === birthday.getMonth() &&
-           today.getDate() === birthday.getDate();
-  }
-
-  function stripTime(d) {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  }
-
-  /* --------------------------
-     Star positions (constellation style),
-     plus designated 7 main heart positions (percentages).
-  ---------------------------*/
-  const mainPositions = [
-    { left: 12, top: 20 },
-    { left: 27, top: 12 },
-    { left: 43, top: 22 },
-    { left: 58, top: 14 },
-    { left: 74, top: 26 },
-    { left: 62, top: 48 },
-    { left: 34, top: 54 }
-  ];
-
-  // Fill background twinkles
-  function populateTwinkles(count = 90) {
-    twinkles.innerHTML = '';
-    for (let i = 0; i < count; i++) {
-      const el = document.createElement('div');
-      el.className = 'twinkle';
-      el.style.position = 'absolute';
-      el.style.left = Math.random() * 100 + 'vw';
-      el.style.top = Math.random() * 100 + 'vh';
-      const dur = (1.2 + Math.random() * 2.2).toFixed(2);
-      el.style.animation = `twinkle ${dur}s ${Math.random() > 0.5 ? 'alternate' : 'alternate-reverse'} infinite ease-in-out`;
-      el.style.width = (1 + Math.random() * 3) + 'px';
-      el.style.height = el.style.width;
-      el.style.background = 'white';
-      el.style.opacity = 0.6 + Math.random() * 0.4;
-      twinkles.appendChild(el);
+  // ---------------------------
+  // compute the target yearly window for Lahore local time
+  // ---------------------------
+  function computeWindow() {
+    const nowParts = nowInLahoreParts();
+    let year = nowParts.year;
+    // birthday is Dec 4 of this 'year' in Lahore
+    // if current Lahore date is Dec 4 or later (>= Dec 4), we want the next year's Dec 4 to trigger transform on the upcoming Dec 4.
+    if (nowParts.month > (TARGET_MONTH+1) || (nowParts.month === (TARGET_MONTH+1) && nowParts.day >= TARGET_DAY)) {
+      year = year + 1;
     }
+    // birthday date parts
+    const birthday = { year: year, month: TARGET_MONTH+1, day: TARGET_DAY }; // month 1-based
+    // start = birthday - (DAYS_TOTAL - 1) days (6 days before birthday to make 7 days until Dec 3)
+    // compute start date by creating a Date in local tz and subtracting days
+    const tmp = new Date(birthday.year, birthday.month-1, birthday.day);
+    tmp.setDate(tmp.getDate() - (DAYS_TOTAL - 1)); // start (Nov 27 when birthday is Dec 4)
+    const start = { year: tmp.getFullYear(), month: tmp.getMonth()+1, day: tmp.getDate() };
+    return { year, birthday, start };
   }
 
-  /* --------------------------
-     Heart SVG generator
-  ---------------------------*/
-  function heartSVG(color = '#ffd7e6', size = 54) {
-    // returns element with absolute-centered svg
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = `
-      <svg class="heart-svg" viewBox="0 0 24 24" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-        <path fill="${color}" d="M12 21s-7.5-4.6-10-7.5C-1 8.9 2.6 4 6.9 6.1 9 7.4 10 9.3 12 11c2-1.7 3-3.6 5.1-4.9C21.4 4 25 8.9 22 13.5 19.5 16.4 12 21 12 21z"/>
-      </svg>`;
-    return wrapper.firstElementChild;
+  // ---------------------------
+  // unlocked count based on Lahore date (00:00 unlock)
+  // ---------------------------
+  function computeUnlockedCount() {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('unlock') === 'all') return DAYS_TOTAL;
+    if (url.searchParams.get('demo') === 'text') return DAYS_TOTAL; // demo mode
+
+    const now = nowInLahoreParts();
+    const win = computeWindow();
+    // Convert start into a JS Date in Lahore wall-clock representation
+    const startDate = new Date(win.start.year, win.start.month-1, win.start.day, 0, 0, 0);
+    const todayDate = new Date(now.year, now.month-1, now.day, 0, 0, 0);
+    const oneDay = 24 * 60 * 60 * 1000;
+    const diffDays = Math.floor((todayDate - startDate) / oneDay);
+    if (diffDays < 0) return 0;
+    if (diffDays >= DAYS_TOTAL) return DAYS_TOTAL;
+    return diffDays + 1; // number of unlocked hearts (1..7)
   }
 
-  /* --------------------------
-     Create 7 main heart buttons
-  ---------------------------*/
-  function createMainHearts(unlockedCount) {
-    starsContainer.innerHTML = '';
-    for (let i = 0; i < MESSAGES.length; i++) {
-      const pos = mainPositions[i] || { left: 12 + i * 10, top: 22 + (i % 2) * 6 };
+  // check if it's Dec 4 or later in Lahore (for the transformation)
+  function isBirthdayDay() {
+    const now = nowInLahoreParts();
+    const win = computeWindow();
+    return (now.year === win.year && now.month === win.birthday.month && now.day >= win.birthday.day) || new URL(window.location.href).searchParams.get('demo') === 'text';
+  }
+
+  // ---------------------------
+  // create background twinkles
+  // ---------------------------
+  function createTwinkles(n = 90) {
+    const frag = document.createDocumentFragment();
+    for (let i=0;i<n;i++){
+      const d = document.createElement('div');
+      d.className = 'twinkle';
+      d.style.left = (Math.random()*100) + 'vw';
+      d.style.top = (Math.random()*100) + 'vh';
+      d.style.opacity = (0.35 + Math.random()*0.9);
+      d.style.width = (1 + Math.random()*2) + 'px';
+      d.style.height = d.style.width;
+      d.style.animationDuration = (1.2 + Math.random()*2.4) + 's';
+      frag.appendChild(d);
+    }
+    twinklesEl.appendChild(frag);
+  }
+
+  // ---------------------------
+  // heart SVG (returns element)
+  // ---------------------------
+  function heartSVG(size = 56, color = '#ffd7e6') {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns,'svg');
+    svg.setAttribute('viewBox','0 0 24 24');
+    svg.setAttribute('width', size);
+    svg.setAttribute('height', size);
+    svg.classList.add('heart-svg');
+    // glow (a blurred path behind)
+    const gBlur = document.createElementNS(ns,'path');
+    gBlur.setAttribute('d','M12 21s-7.5-4.7-10-8c-2.2-2.8 0-6.2 2.5-6.2 2.2 0 3.3 2 4.5 3.4 1.2-1.4 2.3-3.4 4.5-3.4 2.5 0 4.7 3.4 2.5 6.2-2.5 3.3-10 8-10 8z');
+    gBlur.setAttribute('class','heart-glow');
+    gBlur.setAttribute('fill', color);
+    svg.appendChild(gBlur);
+    // core heart
+    const path = document.createElementNS(ns,'path');
+    path.setAttribute('d','M12 21s-7.5-4.7-10-8c-2.2-2.8 0-6.2 2.5-6.2 2.2 0 3.3 2 4.5 3.4 1.2-1.4 2.3-3.4 4.5-3.4 2.5 0 4.7 3.4 2.5 6.2-2.5 3.3-10 8-10 8z');
+    path.setAttribute('fill', color);
+    path.setAttribute('class','heart-core');
+    svg.appendChild(path);
+    return svg;
+  }
+
+  // ---------------------------
+  // create main hearts
+  // ---------------------------
+  function buildMainHearts(unlocked) {
+    mainStarsEl.innerHTML = '';
+    for (let i=0;i<DAYS_TOTAL;i++){
+      const pos = positions[i] || {left: 12 + i*10, top: 20 + (i%2)*8};
       const btn = document.createElement('button');
-      btn.className = 'star ' + (i < unlockedCount ? 'unlocked' : 'disabled');
-      btn.style.left = `calc(${pos.left}% )`;
-      btn.style.top = `calc(${pos.top}% )`;
-      btn.setAttribute('data-index', i);
-      btn.setAttribute('aria-label', `Day ${i + 1}`);
-      // center transform
-      btn.style.transform = 'translate(-50%,-50%) scale(' + (i < unlockedCount ? 1 : 0.88) + ')';
-      // inner SVG heart
-      const svg = heartSVG(i < unlockedCount ? '#ffd7e6' : '#6b4f6b', 54);
-      svg.style.pointerEvents = 'none';
-      btn.appendChild(svg);
-
-      // mini glow
-      const mini = document.createElement('div');
-      mini.className = 'mini';
-      btn.appendChild(mini);
-
-      // click behavior
-      if (i < unlockedCount) {
-        btn.addEventListener('click', () => openMessage(i));
+      btn.className = 'heart-btn' + (i < unlocked ? ' unlocked' : ' disabled');
+      btn.setAttribute('aria-role','listitem');
+      btn.style.left = pos.left + '%';
+      btn.style.top = pos.top + '%';
+      btn.dataset.index = i;
+      // attach SVG heart
+      btn.appendChild(heartSVG(56, i < unlocked ? '#ffd7e6' : '#a182a6'));
+      // click handlers
+      if (i < unlocked) {
+        btn.addEventListener('click', ()=> openModal(i));
       } else {
-        btn.addEventListener('click', () => {
-          // tiny nudge animation to show it's locked
-          btn.animate([
-            { transform: 'translate(-50%,-50%) scale(.88)' },
-            { transform: 'translate(-50%,-50%) scale(.94)' },
-            { transform: 'translate(-50%,-50%) scale(.88)' }
-          ], { duration: 200, iterations: 1 });
+        btn.addEventListener('click', ()=> {
+          // small pulse feedback for locked ones
+          btn.animate([{transform:'translate(-50%,-50%) scale(0.92)'},{transform:'translate(-50%,-50%) scale(1)'}], {duration:180,iterations:1});
         });
       }
-      starsContainer.appendChild(btn);
-
-      // small breathing animation using Web Animations
-      btn.animate([
-        { transform: btn.style.transform, opacity: i < unlockedCount ? 1 : 0.85 },
-        { transform: btn.style.transform.replace('scale(' + (i < unlockedCount ? 1 : 0.88) + ')', 'scale(' + (i < unlockedCount ? 1.03 : 0.92) + ')'), opacity: 1 }
-      ], { duration: 2400 + i * 120, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
+      mainStarsEl.appendChild(btn);
+      // subtle floating animation
+      btn.animate([{transform:'translate(-50%,-52%)'},{transform:'translate(-50%,-48%)'}],{duration:3000 + (i*120),direction:'alternate',iterations:Infinity,easing:'ease-in-out'});
     }
   }
 
-  /* --------------------------
-     Modal handlers
-  ---------------------------*/
-  function openMessage(index) {
-    const msg = MESSAGES[index];
-    modalTitle.textContent = msg.title;
-    modalMessage.textContent = msg.text;
-    // compute date for that day
-    const nowTz = nowInTZ(TIMEZONE);
-    const { birthday, start } = computeDatesForYear(nowTz.getFullYear());
-    const dayDate = new Date(start);
-    dayDate.setDate(start.getDate() + index);
-    modalDate.textContent = formatFriendly(dayDate);
-    showModal();
-  }
-  function showModal() {
+  // ---------------------------
+  // modal open/close
+  // ---------------------------
+  function openModal(i) {
+    const win = computeWindow();
+    const startDate = new Date(win.start.year, win.start.month-1, win.start.day);
+    const dayDate = new Date(startDate); dayDate.setDate(startDate.getDate() + i);
+    modalTitle.textContent = messages[i].title;
+    modalText.textContent = messages[i].text;
+    modalDate.textContent = formatDate(dayDate);
     modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
+    modal.setAttribute('aria-hidden','false');
   }
-  function hideModal() {
+  function closeModal() {
     modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
+    modal.setAttribute('aria-hidden','true');
   }
-  closeBtn.addEventListener('click', hideModal);
-  modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-  /* --------------------------
-     Dec 4 text formation: draw text to offscreen canvas, sample pixels,
-     and animate many tiny stars to those target points
-  ---------------------------*/
-  function formBirthdayTextPreview() {
-    // clear any existing letterHolder visuals
-    letterHolder.innerHTML = '';
-    // draw text to canvas
+  function formatDate(d) {
+    return d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  }
+
+  // ---------------------------
+  // DEC 4 transformation: draw "Happy Birthday Seemal" as stars
+  // We'll render text on an offscreen canvas, sample pixel alpha, and place twinkles on those points.
+  // ---------------------------
+  function showBirthdayMessage() {
+    // hide main hearts (fade)
+    const nodes = Array.from(document.querySelectorAll('.heart-btn'));
+    nodes.forEach(n => n.animate([{opacity:1},{opacity:0}],{duration:500,fill:'forwards'}));
+    setTimeout(()=> nodes.forEach(n => n.style.display='none'), 520);
+
+    // prepare canvas
+    const skyRect = document.getElementById('sky').getBoundingClientRect();
+    canvas.width = skyRect.width;
+    canvas.height = skyRect.height;
+
     const ctx = canvas.getContext('2d');
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const w = Math.min(1200, Math.max(600, Math.floor(window.innerWidth * 0.9)));
-    const h = Math.min(400, Math.floor(window.innerHeight * 0.35));
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(dpr, dpr);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // background not needed
-    // font choice and size
-    const fontSize = Math.floor(h * 0.32);
-    ctx.font = `bold ${fontSize}px -apple-system, Inter, system-ui, Roboto, Arial`;
+    // text settings (large responsive)
+    const fontSize = Math.max(28, Math.floor(canvas.width / 12));
+    ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    // draw text centered
-    ctx.fillText(NAME_TEXT, w / 2, h * 0.6);
+    ctx.font = `bold ${fontSize}px Georgia, serif`;
+    // top text: "Happy Birthday"
+    ctx.fillText('Happy Birthday', canvas.width/2, canvas.height*0.40);
+    // bottom text: name
+    const nameFont = Math.max(38, Math.floor(canvas.width / 10));
+    ctx.font = `bold ${nameFont}px Georgia, serif`;
+    ctx.fillText(TARGET_NAME, canvas.width/2, canvas.height*0.56);
 
     // sample pixels
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const step = Math.max(2, Math.round(dpr * 6)); // sampling step to reduce points
-    const points = [];
+    const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const gap = Math.max(6, Math.floor(canvas.width / 140)); // spacing between stars
+    const frag = document.createDocumentFragment();
 
-    for (let y = 0; y < canvas.height; y += step * dpr) {
-      for (let x = 0; x < canvas.width; x += step * dpr) {
-        const idx = ((y * canvas.width) + x) * 4;
-        const alpha = img.data[idx + 3];
-        if (alpha > 120) {
-          // convert x,y to percentage of canvas, then to positions inside sky
-          const px = (x / canvas.width) * 100;
-          const py = (y / canvas.height) * 100;
-          points.push({ xPercent: px, yPercent: py });
-          if (points.length >= MAX_TEXT_PARTICLES) break;
+    // create star nodes only on non-transparent pixels (sampled)
+    for (let y=0; y < canvas.height; y += gap){
+      for (let x=0; x < canvas.width; x += gap){
+        const idx = (y * canvas.width + x) * 4;
+        const alpha = img.data[idx+3];
+        if (alpha > 120 && Math.random() > 0.5) { // half density for nicer shape
+          const el = document.createElement('div');
+          el.className = 'twinkle';
+          const left = (x / canvas.width) * 100;
+          const top = (y / canvas.height) * 100;
+          el.style.left = left + 'vw';
+          el.style.top = top + 'vh';
+          el.style.opacity = (0.9 * (0.6 + Math.random()*0.5));
+          el.style.width = (1 + Math.random()*2) + 'px';
+          el.style.height = el.style.width;
+          el.style.animationDuration = (1.2 + Math.random()*1.8) + 's';
+          frag.appendChild(el);
         }
       }
-      if (points.length >= MAX_TEXT_PARTICLES) break;
     }
 
-    // create particles (stars) in letterHolder and animate them from random start to sampled points
-    const total = points.length;
-    const particles = [];
-    // initial random start points
-    for (let i = 0; i < total; i++) {
-      const pt = points[i];
-      const p = document.createElement('div');
-      p.className = 'text-particle';
-      p.style.position = 'absolute';
-      // start at random location in sky
-      const sx = 10 + Math.random() * 80;
-      const sy = 10 + Math.random() * 80;
-      p.style.left = sx + '%';
-      p.style.top = sy + '%';
-      p.style.width = '6px';
-      p.style.height = '6px';
-      p.style.borderRadius = '50%';
-      p.style.background = 'rgba(255,215,240,0.96)';
-      p.style.boxShadow = '0 0 8px rgba(255,150,190,0.75)';
-      p.style.transform = 'translate(-50%,-50%)';
-      letterHolder.appendChild(p);
-      particles.push({ el: p, target: pt });
-    }
+    // clear canvas visible (we used it only to sample)
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    // append sample stars to sky
+    // remove existing twinkles for clarity
+    twinklesEl.innerHTML = '';
+    twinklesEl.appendChild(frag);
 
-    // animate them into place with stagger
-    particles.forEach((part, i) => {
-      const delay = 60 + i * 8 * (Math.random() * 0.9);
-      setTimeout(() => {
-        // move to percent target
-        part.el.animate([
-          { left: part.el.style.left, top: part.el.style.top, opacity: 0.95, transform: 'translate(-50%,-50%) scale(1)' },
-          { left: part.target.xPercent + '%', top: part.target.yPercent + '%', opacity: 1, transform: 'translate(-50%,-50%) scale(1.1)' }
-        ], { duration: 1000 + Math.random() * 800, easing: 'cubic-bezier(.2,.9,.2,1)', fill: 'forwards' });
-
-        // tiny flicker forever
-        part.el.animate([
-          { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
-          { transform: 'translate(-50%,-50%) scale(.86)', opacity: 0.6 }
-        ], { duration: 2000 + Math.random() * 2000, direction: 'alternate', iterations: Infinity, easing: 'ease-in-out' });
-      }, delay);
-    });
-
-    // final gentle sparkle of the whole text
-    setTimeout(() => {
-      const shine = document.createElement('div');
-      shine.style.position = 'absolute';
-      shine.style.left = '50%';
-      shine.style.top = '45%';
-      shine.style.transform = 'translate(-50%,-50%)';
-      shine.style.width = '80%';
-      shine.style.height = '60%';
-      shine.style.borderRadius = '10px';
-      shine.style.pointerEvents = 'none';
-      shine.style.boxShadow = '0 0 80px 30px rgba(255,140,180,0.06)';
-      letterHolder.appendChild(shine);
-    }, 1600);
+    // add a celebratory glow text overlay (DOM)
+    createBirthdayOverlay();
   }
 
-  /* --------------------------
-     Initialization
-  ---------------------------*/
+  function createBirthdayOverlay() {
+    // small overlay card showing Happy Birthday Seemal
+    const overlay = document.createElement('div');
+    overlay.style.position = 'absolute';
+    overlay.style.left = '50%';
+    overlay.style.top = '72%';
+    overlay.style.transform = 'translate(-50%,-50%)';
+    overlay.style.background = 'rgba(255,255,255,0.92)';
+    overlay.style.color = '#2b0036';
+    overlay.style.padding = '14px 18px';
+    overlay.style.borderRadius = '12px';
+    overlay.style.boxShadow = '0 8px 30px rgba(0,0,0,0.35)';
+    overlay.style.fontWeight = '600';
+    overlay.style.fontSize = '16px';
+    overlay.textContent = `Happy Birthday ${TARGET_NAME} 🎉`;
+    overlay.style.opacity = '0';
+    overlay.style.transition = 'opacity .5s ease, transform .45s ease';
+    document.getElementById('sky').appendChild(overlay);
+    requestAnimationFrame(()=> {
+      overlay.style.opacity = '1';
+      overlay.style.transform = 'translate(-50%,-60%)';
+    });
+  }
+
+  // ---------------------------
+  // init
+  // ---------------------------
   function init() {
-    populateTwinkles(92);
-    const unlocked = getUnlockedCount();
-
-    // if it's Dec 4 in Lahore (or preview param), show text formation
-    if (isDec4InTZ() || (new URL(window.location.href).searchParams.get('preview') === 'bb')) {
-      // Hide main hearts and show text formation
-      starsContainer.innerHTML = '';
-      statusText.textContent = `It's ${NAME_TEXT} — tap any sparkling star to celebrate!`;
-      // create lots of smaller twinkles (more dramatic)
-      populateTwinkles(140);
-      // run formation
-      formBirthdayTextPreview();
-      return;
-    }
-
-    createMainHearts(unlocked);
+    createTwinkles(120);
+    const unlocked = computeUnlockedCount();
+    const isBday = isBirthdayDay();
+    // Build hearts according to unlocked count
+    buildMainHearts(unlocked);
 
     // status text
-    if (unlocked === 0) {
-      const { start } = computeDatesForYear(nowInTZ(TIMEZONE).getFullYear());
-      statusText.textContent = `Countdown starts on ${formatFriendly(start)} (Lahore time).`;
-    } else if (unlocked < MESSAGES.length) {
-      statusText.textContent = `${unlocked} of 7 hearts unlocked. Tap the glowing hearts each day.`;
+    if (isBday) {
+      status.textContent = `It's time — Happy Birthday ${TARGET_NAME}!`;
+      // show transform (if ?demo=text provided, also triggers)
+      setTimeout(()=> showBirthdayMessage(), 600);
+    } else if (unlocked === 0) {
+      const win = computeWindow();
+      status.textContent = `Countdown starts on ${formatLahoreDisplay(win.start)} (Lahore time).`;
+    } else if (unlocked < DAYS_TOTAL) {
+      status.textContent = `${unlocked} of ${DAYS_TOTAL} hearts unlocked. Tap the glowing hearts each day.`;
     } else {
-      // all 7 unlocked (this will be Dec 3), next day will be Dec 4 formation
-      statusText.textContent = `All 7 hearts unlocked — final celebration tomorrow!`;
+      status.textContent = `All hearts unlocked — final message will appear on ${computeWindow().birthday.month}/${computeWindow().birthday.day} (Lahore).`;
     }
   }
 
-  // kick off
+  function formatLahoreDisplay(partObj) {
+    const d = new Date(partObj.year, partObj.month-1, partObj.day);
+    return d.toLocaleDateString(undefined,{month:'short', day:'numeric'});
+  }
+
+  // run
   init();
 
-  // re-run init if window resized (to adapt canvas on Dec 4 preview)
-  window.addEventListener('resize', () => { if (isDec4InTZ() || (new URL(window.location.href).searchParams.get('preview') === 'bb')) { letterHolder.innerHTML = ''; formBirthdayTextPreview(); } });
+  // expose demo unlock via query param for quick testing: ?unlock=all or ?demo=text
+  // (done earlier in compute functions)
 
+  // done
 })();
