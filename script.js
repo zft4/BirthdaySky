@@ -16,6 +16,15 @@ const MESSAGES = [
 ];
 
 // ===========================
+// TEST MODE & QUERY PARAMETERS
+// ===========================
+function getTestDaysOverride() {
+    const params = new URLSearchParams(window.location.search);
+    const testDays = params.get('testDays');
+    return testDays ? parseInt(testDays, 10) : null;
+}
+
+// ===========================
 // STAR ANIMATION
 // ===========================
 const canvas = document.getElementById('starCanvas');
@@ -72,6 +81,11 @@ animateStars();
 // TIMEZONE & UNLOCKING LOGIC
 // ===========================
 function getDaysRemainingInLahore() {
+    const testOverride = getTestDaysOverride();
+    if (testOverride !== null) {
+        return testOverride;
+    }
+
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: LAHORE_TIMEZONE,
@@ -111,10 +125,10 @@ function generateHearts() {
     const heartGrid = document.querySelector('.heart-grid');
     heartGrid.innerHTML = '';
 
-    // Shuffle messages for randomness while keeping day numbers intact
-    const shuffledMessages = [...MESSAGES].sort(() => Math.random() - 0.5);
+    // Sort messages in descending order (day 7 → day 1)
+    const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
 
-    shuffledMessages.forEach(msg => {
+    sortedMessages.forEach(msg => {
         const isLocked = !isHeartUnlocked(msg.day);
         const wrapper = document.createElement('div');
         wrapper.className = `heart-wrapper ${isLocked ? 'locked' : ''}`;
@@ -261,6 +275,12 @@ function triggerSurpriseAnimation() {
 }
 
 function checkForSurpriseTime() {
+    const testOverride = getTestDaysOverride();
+    if (testOverride === 0) {
+        triggerSurpriseAnimation();
+        return true;
+    }
+
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: LAHORE_TIMEZONE,
@@ -304,4 +324,12 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-hidden', 'true');
     modal.setAttribute('aria-labelledby', 'modalTitle');
+
+    // Show test mode notification if active
+    const testDays = getTestDaysOverride();
+    if (testDays !== null) {
+        console.log(`🧪 TEST MODE ACTIVE: ${testDays} days remaining`);
+        console.log(`📝 URL: ${window.location.href}`);
+        console.log(`💡 To unlock all hearts, use: ?testDays=0`);
+    }
 });

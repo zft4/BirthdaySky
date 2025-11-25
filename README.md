@@ -81,6 +81,86 @@ This project is optimized specifically for iPhone 12 Pro:
 4. Try keyboard shortcuts: Tab, Enter, Esc
 5. For the surprise animation test: Change system time to Dec 4, 2025 at 11:59 PM, wait for midnight
 
+## 🧪 Test Mode (Before Your Wife Sees It)
+
+Before sharing with Seemi, you can test the unlocking and surprise animation without waiting for actual dates!
+
+### Test URL Parameters
+
+Add `?testDays=X` to the URL where X is the number of days remaining:
+
+**Examples:**
+
+- `http://localhost:8000/?testDays=7` - All hearts locked (7 days left)
+- `http://localhost:8000/?testDays=3` - First 4 hearts unlocked, last 3 locked
+- `http://localhost:8000/?testDays=0` - All hearts unlocked + trigger surprise animation
+- `https://zft4.github.io/BirthdaySky/?testDays=2` - Test on live GitHub Pages
+
+### What Each Test Value Shows
+
+| URL Parameter | What It Shows |
+|---|---|
+| `?testDays=7` | All hearts locked (mimics Nov 27, 2025) |
+| `?testDays=6` | Day 7 unlocked, rest locked |
+| `?testDays=5` | Days 7-6 unlocked, rest locked |
+| `?testDays=4` | Days 7-5 unlocked, rest locked |
+| `?testDays=3` | Days 7-4 unlocked, rest locked |
+| `?testDays=2` | Days 7-5 unlocked, rest locked |
+| `?testDays=1` | Days 7-6 unlocked, rest locked |
+| `?testDays=0` | All hearts unlocked + confetti/surprise animation triggers |
+
+### Testing Workflow
+
+**Step 1: Test Hearts Locked**
+```
+http://localhost:8000/?testDays=7
+```
+- Should show all 7 hearts (Day 7 down to Day 1) in descending order
+- All hearts should be grayed out with 🔒 lock icons
+- Clicking any heart should do nothing
+
+**Step 2: Test Progressive Unlocking**
+```
+http://localhost:8000/?testDays=5
+```
+- Top 2 hearts (Day 7, Day 6) should be bright pink and glowing
+- Bottom 5 hearts should be grayed out with lock icons
+- Click the unlocked hearts to see the messages
+
+**Step 3: Test All Unlocked**
+```
+http://localhost:8000/?testDays=1
+```
+- All hearts should be visible and clickable
+- All should be bright pink with beating animation
+
+**Step 4: Test Surprise Animation**
+```
+http://localhost:8000/?testDays=0
+```
+- All hearts unlocked
+- Confetti should immediately burst and fall
+- 12 hearts should explode outward from center
+- Birthday message card should appear
+- Everything should clean up after 5 seconds
+
+### Browser Console Notifications
+
+When test mode is active, you'll see helpful messages in the browser console (F12 → Console):
+```
+🧪 TEST MODE ACTIVE: 3 days remaining
+📝 URL: http://localhost:8000/?testDays=3
+💡 To unlock all hearts, use: ?testDays=0
+```
+
+### Important Notes
+
+- Test mode only affects unlock status, **not the actual date**
+- Test mode is **safe to use** and won't break anything
+- The actual surprise animation (Dec 4 at midnight) will still work normally
+- Once you remove `?testDays=X`, it goes back to normal timezone-based unlocking
+- Test mode works on both local (`localhost:8000`) and GitHub Pages URLs
+
 ## 💌 Customizing Messages
 
 To change the daily messages, edit `script.js` and update the `MESSAGES` array:

@@ -61,10 +61,25 @@ python3 -m http.server 8000
 # Open http://localhost:8000
 ```
 
+### Test Mode URL Parameters
+Add `?testDays=X` to test unlocking without waiting for actual dates:
+
+```
+# Test with 7 days left (all locked)
+http://localhost:8000/?testDays=7
+
+# Test with 3 days left (first 4 hearts unlocked)
+http://localhost:8000/?testDays=3
+
+# Test with 0 days left (all unlocked + surprise animation)
+http://localhost:8000/?testDays=0
+```
+
 ### Check Unlock Status
-Open browser console and type:
+Open browser console (F12) and type:
 ```javascript
-getDaysRemainingInLahore()  // Should return 0-7
+getDaysRemainingInLahore()  // Shows days remaining
+getTestDaysOverride()       // Shows test mode value if active
 ```
 
 ### Test Surprise Animation
