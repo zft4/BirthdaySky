@@ -154,6 +154,26 @@ function generateHearts() {
     // Sort messages in descending order (day 7 → day 1)
     const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
 
+    // Position mapping requested by user: map each day to a different coordinate index
+    // Current coord indices: 0->day7,1->day6,2->day5,3->day4,4->day3,5->day2,6->day1
+    // User mapping: 
+    // heart 7 -> where 2 is (index 5)
+    // heart 6 -> where 1 is (index 6)
+    // heart 5 -> where 4 is (index 3)
+    // heart 4 -> where 3 is (index 4)
+    // heart 3 -> where 6 is (index 1)
+    // heart 2 -> where 5 is (index 2)
+    // heart 1 -> where 7 is (index 0)
+    const positionForDay = {
+        7: 5,
+        6: 6,
+        5: 3,
+        4: 4,
+        3: 1,
+        2: 2,
+        1: 0
+    };
+
     const daysRemaining = getDaysRemainingInLahore();
     // Current day is the heart that was just unlocked (the one equal to daysRemaining)
     // E.g., if daysRemaining=6, heart 6 was just unlocked, so currentDay = 6
@@ -182,8 +202,9 @@ function generateHearts() {
 
         // Position absolutely in the grid using normalized coordinates (percent)
         wrapper.style.position = 'absolute';
-        wrapper.style.left = `calc(${heartCoords[i].x * 100}% - 42.5px)`;
-        wrapper.style.top = `calc(${heartCoords[i].y * 100}% - 42.5px)`;
+        const coordIndex = positionForDay[msg.day] !== undefined ? positionForDay[msg.day] : i;
+        wrapper.style.left = `calc(${heartCoords[coordIndex].x * 100}% - 42.5px)`;
+        wrapper.style.top = `calc(${heartCoords[coordIndex].y * 100}% - 42.5px)`;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'heart-svg');
