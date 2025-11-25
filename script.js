@@ -32,11 +32,10 @@ const ctx = canvas.getContext('2d');
 let width, height, stars = [];
 
 function resize() {
-    // Prefer visualViewport when available to avoid mobile Safari bottom-bar issues
-    width = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-    height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    canvas.width = Math.max(300, Math.floor(width));
-    canvas.height = Math.max(300, Math.floor(height));
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
     createStars();
 }
 
@@ -81,14 +80,6 @@ animateStars();
 // ===========================
 // TIMEZONE & UNLOCKING LOGIC
 // ===========================
-// Track last focused heart and whether the last interaction was from keyboard
-let lastFocusedHeart = null;
-let lastInteractionWasKeyboard = false;
-
-// Track interaction type to decide whether to restore focus on close
-window.addEventListener('keydown', () => { lastInteractionWasKeyboard = true; });
-window.addEventListener('mousedown', () => { lastInteractionWasKeyboard = false; });
-
 function getDaysRemainingInLahore() {
     const testOverride = getTestDaysOverride();
     if (testOverride !== null) {
@@ -144,57 +135,24 @@ function getUnlockedDays() {
 function generateHearts() {
     const heartGrid = document.querySelector('.heart-grid');
     heartGrid.innerHTML = '';
-    // lastFocusedHeart is global so modal open/close can use it
 
-    // Normalized coordinates for an upright heart (percent-based)
+    // Normalized coordinates for an upright heart (percent-based, avoids overlap)
     const heartCoords = [
-        { x: 0.5, y: 0.08 }, // Top center (Day 7)
-        { x: 0.22, y: 0.22 }, // Left upper (Day 6)
-        { x: 0.78, y: 0.22 }, // Right upper (Day 5)
-        { x: 0.13, y: 0.46 }, // Far left (Day 4)
-        { x: 0.87, y: 0.46 }, // Far right (Day 3)
-        { x: 0.32, y: 0.72 }, // Left lower (Day 2)
-        { x: 0.68, y: 0.72 }  // Right lower (Day 1)
+        { x: 0.5, y: 0.82 }, // Top center (Day 7)
+        { x: 0.22, y: 0.62 }, // Left upper (Day 6)
+        { x: 0.78, y: 0.62 }, // Right upper (Day 5)
+        { x: 0.13, y: 0.32 }, // Far left (Day 4)
+        { x: 0.87, y: 0.32 }, // Far right (Day 3)
+        { x: 0.32, y: 0.08 }, // Left bottom (Day 2)
+        { x: 0.68, y: 0.08 }  // Right bottom (Day 1)
     ];
 
-    // Use visualViewport when available for more accurate mobile sizing
-    const viewportW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
-    const viewportH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-
-    // Responsive size for grid container: on small screens use more vertical space to avoid 'sandwiching'
-    const gridW = Math.min(viewportW * 0.95, 420);
-    const gridH = viewportW < 600 ? Math.min(viewportH * 0.78, 520) : Math.min(viewportH * 0.55, 420);
-
-    // For narrow screens, use alternate coordinates that spread hearts more vertically
-    let coords = heartCoords;
-    if (viewportW < 600) {
-        coords = [
-            { x: 0.5, y: 0.06 },
-            { x: 0.18, y: 0.22 },
-            { x: 0.82, y: 0.22 },
-            { x: 0.12, y: 0.44 },
-            { x: 0.88, y: 0.44 },
-            { x: 0.32, y: 0.72 },
-            { x: 0.68, y: 0.9 }
-        ];
-    }
+    // Responsive size for iPhone screens (used to size the grid container)
+    const gridW = Math.min(window.innerWidth, 420);
+    const gridH = Math.min(window.innerHeight * 0.55, 420);
 
     // Sort messages in descending order (day 7 → day 1)
     const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
-
-    // Position mapping requested by user: map each day to a different coordinate index
-    // Original coord indices: 0->day7,1->day6,2->day5,3->day4,4->day3,5->day2,6->day1
-    // New placement: day7->where day2 was (index 5), day6->where day1 was (6), day5->where day4 was (3),
-    // day4->where day3 was (4), day3->where day6 was (1), day2->where day5 was (2), day1->where day7 was (0)
-    const positionForDay = {
-        1: 0,
-        2: 2,
-        3: 1,
-        4: 4,
-        5: 3,
-        6: 6,
-        7: 5
-    };
 
     const daysRemaining = getDaysRemainingInLahore();
     // Current day is the heart that was just unlocked (the one equal to daysRemaining)
@@ -222,11 +180,10 @@ function generateHearts() {
         wrapper.setAttribute('aria-label', `Day ${msg.day}: ${msg.title}${isLocked ? ' (locked)' : ''}`);
         wrapper.setAttribute('data-day', msg.day);
 
-        // Position absolutely in the grid using normalized coordinates (percent). Use position mapping.
+        // Position absolutely in the grid using normalized coordinates (percent)
         wrapper.style.position = 'absolute';
-        const coordIndex = positionForDay[msg.day] !== undefined ? positionForDay[msg.day] : i;
-        wrapper.style.left = `calc(${coords[coordIndex].x * 100}% - 42.5px)`;
-        wrapper.style.top = `calc(${coords[coordIndex].y * 100}% - 42.5px)`;
+        wrapper.style.left = `calc(${heartCoords[i].x * 100}% - 42.5px)`;
+        wrapper.style.top = `calc(${heartCoords[i].y * 100}% - 42.5px)`;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'heart-svg');
@@ -254,17 +211,13 @@ function generateHearts() {
         }
 
         wrapper.addEventListener('click', () => {
-            lastInteractionWasKeyboard = false;
             if (!isLocked) {
-                lastFocusedHeart = wrapper;
                 openModal(msg.title, msg.text);
             }
         });
 
         wrapper.addEventListener('keypress', (e) => {
             if ((e.key === 'Enter' || e.key === ' ') && !isLocked) {
-                lastInteractionWasKeyboard = true;
-                lastFocusedHeart = wrapper;
                 openModal(msg.title, msg.text);
             }
         });
@@ -376,19 +329,8 @@ function openModal(title, text) {
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
 
-    // Remove focus from any heart so the focus ring doesn't persist behind it
-    try {
-        const active = document.activeElement;
-        if (active && active.classList && active.classList.contains('heart-wrapper')) {
-            active.blur();
-        }
-    } catch (e) {
-        // ignore
-    }
-
     // Focus the close button for accessibility
-    const closeBtn = document.querySelector('.close-btn');
-    if (closeBtn) closeBtn.focus();
+    document.querySelector('.close-btn').focus();
 }
 
 function closeModal() {
@@ -396,26 +338,8 @@ function closeModal() {
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
 
-    // Return focus to the last clicked/focused heart only if the user used the keyboard
-    try {
-        if (lastInteractionWasKeyboard && lastFocusedHeart && document.body.contains(lastFocusedHeart) && !lastFocusedHeart.classList.contains('locked')) {
-            lastFocusedHeart.focus();
-        } else {
-            // Otherwise move focus to the body/documentElement to avoid leaving a persistent focus ring
-            try {
-                document.body.setAttribute('tabindex', '-1');
-                document.body.focus();
-                document.body.removeAttribute('tabindex');
-            } catch (e) {
-                try { document.documentElement.focus(); } catch (e) {}
-            }
-        }
-    } catch (e) {
-        // ignore
-    }
-    lastFocusedHeart = null;
-    // regenerate hearts to ensure layout/state is up-to-date after closing
-    try { generateHearts(); } catch (e) {}
+    // Return focus to the last clicked heart
+    document.querySelector('.heart-wrapper:not(.locked)').focus();
 }
 
 // Close modal on Esc key
@@ -447,10 +371,42 @@ function triggerSurpriseAnimation() {
         document.body.appendChild(confetti);
         setTimeout(() => confetti.remove(), 5000);
     }
-    // Show the birthday message using the same modal overlay (so background blurs)
-    openModal('🎉 Happy Birthday Shumi! 🎉', 'Your special day has arrived! May this year bring you endless joy, love, and all the happiness you deserve.');
 
-    // Note: modal close will regenerate hearts via closeModal
+    // Show special message (modal, not blocking)
+    const specialCard = document.createElement('div');
+    specialCard.className = 'card';
+    specialCard.style.position = 'fixed';
+    specialCard.style.zIndex = '150';
+    specialCard.style.left = '50%';
+    specialCard.style.top = '50%';
+    specialCard.style.transform = 'translate(-50%, -50%)';
+    specialCard.id = 'birthday-card';
+    specialCard.innerHTML = `
+        <h2>🎉 Happy Birthday Shumi! 🎉</h2>
+        <p>Your special day has arrived! May this year bring you endless joy, love, and all the happiness you deserve.</p>
+        <button class="close-btn">Close</button>
+    `;
+    document.body.appendChild(specialCard);
+
+    // Allow closing at any time
+    const closeBtn = specialCard.querySelector('.close-btn');
+    closeBtn.focus();
+    
+    const closeBirthdayCard = () => {
+        if (document.getElementById('birthday-card')) {
+            document.getElementById('birthday-card').remove();
+            generateHearts();
+        }
+    };
+    
+    closeBtn.addEventListener('click', closeBirthdayCard);
+    
+    const closeHandler = (e) => {
+        if (e.key === 'Escape' && document.getElementById('birthday-card')) {
+            closeBirthdayCard();
+        }
+    };
+    document.addEventListener('keydown', closeHandler);
 }
 
 function checkForSurpriseTime() {
