@@ -144,17 +144,45 @@ function generateHearts() {
         { x: 0.72, y: 0.08 }, // index 1 = Day 6 (top-right)
         { x: 0.40, y: 0.26 }, // index 2 = Day 5 (upper bulge left)
         { x: 0.60, y: 0.26 }, // index 3 = Day 4 (upper bulge right)
-        { x: 0.43, y: 0.48 }, // index 4 = Day 3 (middle left)
-        { x: 0.57, y: 0.48 }, // index 5 = Day 2 (middle right)
-        { x: 0.50, y: 0.78 }  // index 6 = Day 1 (bottom point)
-    ];
+            { x: 0.43, y: 0.48 }, // index 4 = Day 3 (middle left)
+            { x: 0.57, y: 0.48 }, // index 5 = Day 2 (middle right)
+            { x: 0.50, y: 0.78 }  // index 6 = Day 1 (bottom point)
+        ];
+    
+        // Generate responsive pixel coordinates for an aesthetically spaced "heart" constellation.
+        // Layout (user requested):
+        // Top row: Day7 (left), Day6 (right)
+        // Next: Day5 (left), Day4 (right)
+        // Next: Day3 (left), Day2 (right)
+        // Bottom: Day1 (center)
+        const isSmall = window.innerWidth <= 600;
+        const heartSize = isSmall ? 60 : 85;
+
+        const gridW = Math.min(window.innerWidth * 0.92, 460);
+        const gridH = Math.min(window.innerHeight * 0.6, 520);
+
+        // Row Y positions (top to bottom)
+        const rowYs = [gridH * 0.12, gridH * 0.30, gridH * 0.52, gridH * 0.80];
+
+        // X positions for two-columns and center
+        const xLeft = gridW * 0.28;
+        const xRight = gridW * 0.72;
+        const xMidLeft = gridW * 0.40;
+        const xMidRight = gridW * 0.60;
+        const xCenter = gridW * 0.50;
+
+        const coordsPx = [
+            { x: xLeft, y: rowYs[0] },    // Day 7 (top-left)
+            { x: xRight, y: rowYs[0] },   // Day 6 (top-right)
+            { x: xMidLeft, y: rowYs[1] }, // Day 5 (upper bulge left)
+            { x: xMidRight, y: rowYs[1] },// Day 4 (upper bulge right)
+            { x: xMidLeft + 12, y: rowYs[2] }, // Day 3 (middle left)
+            { x: xMidRight - 12, y: rowYs[2] },// Day 2 (middle right)
+            { x: xCenter, y: rowYs[3] }    // Day 1 (bottom center)
+        ];
 
     // Sort messages in descending order (day 7 → day 1)
     const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
-
-    // Responsive size for iPhone screens
-    const gridW = Math.min(window.innerWidth, 400);
-    const gridH = Math.min(window.innerHeight * 0.55, 400);
 
     const daysRemaining = getDaysRemainingInLahore();
     // Current day is the heart that was just unlocked (the one equal to daysRemaining)
@@ -182,10 +210,14 @@ function generateHearts() {
         wrapper.setAttribute('aria-label', `Day ${msg.day}: ${msg.title}${isLocked ? ' (locked)' : ''}`);
         wrapper.setAttribute('data-day', msg.day);
 
-        // Position absolutely in the grid using heartCoords
+        // Position absolutely in the grid using computed pixel coordinates to avoid overlap
         wrapper.style.position = 'absolute';
-        wrapper.style.left = `calc(${heartCoords[i].x * 100}% - 42.5px)`;
-        wrapper.style.top = `calc(${heartCoords[i].y * 100}% - 42.5px)`;
+        const pos = coordsPx[i];
+        wrapper.style.left = (pos.x - heartSize / 2) + 'px';
+        wrapper.style.top = (pos.y - heartSize / 2) + 'px';
+        // Set size explicitly so spacing is consistent
+        wrapper.style.width = heartSize + 'px';
+        wrapper.style.height = heartSize + 'px';
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'heart-svg');
