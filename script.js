@@ -118,10 +118,10 @@ function getDaysRemainingInLahore() {
 
 function isHeartUnlocked(day) {
     const daysRemaining = getDaysRemainingInLahore();
-    // Heart unlocks when day > daysRemaining
-    // E.g., if daysRemaining=7, no hearts unlock (7 > 7 is false)
-    // If daysRemaining=6, heart 7 unlocks (7 > 6 is true)
-    return day > daysRemaining;
+    // Heart unlocks when day >= daysRemaining
+    // E.g., if daysRemaining=7, heart 7 unlocks (7 >= 7 is true)
+    // If daysRemaining=6, hearts 7 & 6 unlock (7 >= 6 and 6 >= 6 are true)
+    return day >= daysRemaining;
 }
 
 function getUnlockedDays() {
@@ -137,16 +137,16 @@ function generateHearts() {
     heartGrid.innerHTML = '';
 
     // Heart-shaped constellation coordinates (normalized, centered, 0-1)
-    // Upright heart with point at top, bulges at bottom
-    // Heart 7 at top, Heart 1 at bottom
+    // Inverted heart: point at bottom, bulges at top
+    // Heart 7 at bottom point, Hearts 6&5 at top bulges
     const heartCoords = [
-        { x: 0.5, y: 0.82 }, // Top point (Day 7)
-        { x: 0.22, y: 0.62 }, // Left upper (Day 6)
-        { x: 0.78, y: 0.62 }, // Right upper (Day 5)
-        { x: 0.13, y: 0.32 }, // Far left (Day 4)
-        { x: 0.87, y: 0.32 }, // Far right (Day 3)
-        { x: 0.32, y: 0.08 }, // Left bottom (Day 2)
-        { x: 0.68, y: 0.08 }  // Right bottom (Day 1)
+        { x: 0.28, y: 0.08 }, // index 0 = Day 7 (top-left)
+        { x: 0.72, y: 0.08 }, // index 1 = Day 6 (top-right)
+        { x: 0.40, y: 0.26 }, // index 2 = Day 5 (upper bulge left)
+        { x: 0.60, y: 0.26 }, // index 3 = Day 4 (upper bulge right)
+        { x: 0.43, y: 0.48 }, // index 4 = Day 3 (middle left)
+        { x: 0.57, y: 0.48 }, // index 5 = Day 2 (middle right)
+        { x: 0.50, y: 0.78 }  // index 6 = Day 1 (bottom point)
     ];
 
     // Sort messages in descending order (day 7 → day 1)
@@ -157,10 +157,11 @@ function generateHearts() {
     const gridH = Math.min(window.innerHeight * 0.55, 400);
 
     const daysRemaining = getDaysRemainingInLahore();
-    // Current day is the heart that just unlocked or is about to unlock
-    // E.g., if daysRemaining=6, heart 7 just unlocked (7 > 6), so currentDay = 7
-    // If daysRemaining=7, no hearts unlocked yet, so currentDay = null
-    const currentDay = daysRemaining < 7 ? daysRemaining + 1 : null;
+    // Current day is the heart that was just unlocked (the one equal to daysRemaining)
+    // E.g., if daysRemaining=6, heart 6 was just unlocked, so currentDay = 6
+    // If daysRemaining=7, heart 7 just unlocked, so currentDay = 7
+    // If daysRemaining=0, it's the birthday (no single "current" day), so currentDay = null
+    const currentDay = daysRemaining > 0 && daysRemaining <= 7 ? daysRemaining : null;
     const isOnBirthday = daysRemaining === 0;
 
     sortedMessages.forEach((msg, i) => {
