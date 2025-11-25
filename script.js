@@ -6,13 +6,13 @@ const LAHORE_TIMEZONE = 'Asia/Karachi';
 
 // Messages for each day (day 1 = Dec 3, day 7 = Nov 27)
 const MESSAGES = [
-    { day: 1, title: '1 Day Left', text: 'I am in love with you forever my dear Seemi' },
-    { day: 2, title: '2 Days Left', text: 'You deserve all the good in the world and so much more' },
-    { day: 3, title: '3 Days Left', text: 'I hope to be a husband deserving of your love and affection Inshallah' },
-    { day: 4, title: '4 Days Left', text: 'You mean the absolute most to me' },
-    { day: 5, title: '5 Days Left', text: 'I am proud of you always for everything you are and do' },
-    { day: 6, title: '6 Days Left', text: 'I miss you every single day, and look forward to the day we live with each other' },
-    { day: 7, title: '7 Days Left', text: 'You are heavily responsible for all the good in me, and for the man I am today, thank you' }
+    { day: 1, title: '1 Day Left', text: 'I am in love with you forever my dear Seemi.' },
+    { day: 2, title: '2 Days Left', text: 'You deserve all the good in the world and so much more.' },
+    { day: 3, title: '3 Days Left', text: 'I hope to be a husband deserving of your love and affection Inshallah.' },
+    { day: 4, title: '4 Days Left', text: 'You mean the absolute most to me.' },
+    { day: 5, title: '5 Days Left', text: 'I am proud of you always for everything you are and do.' },
+    { day: 6, title: '6 Days Left', text: 'I miss you every single day, and look forward to the day we live with each other.' },
+    { day: 7, title: '7 Days Left', text: 'You are heavily responsible for all the good in me, and for the man I am today. Thank you.' }
 ];
 
 // ===========================
@@ -83,7 +83,9 @@ animateStars();
 function getDaysRemainingInLahore() {
     const testOverride = getTestDaysOverride();
     if (testOverride !== null) {
-        return testOverride;
+        // testDays=0: all unlocked (Dec 4), testDays=1: only Day 1 unlocked, testDays=7: only Day 7 unlocked
+        // So daysRemaining = testDays
+        return Math.max(0, Math.min(7, testOverride));
     }
 
     const now = new Date();
@@ -102,10 +104,16 @@ function getDaysRemainingInLahore() {
     const parts = lahoreTimeStr.match(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)/);
     const lahoreTime = new Date(`${parts[3]}-${parts[1]}-${parts[2]}T${parts[4]}:${parts[5]}:${parts[6]}Z`);
 
-    const timeDiff = TARGET_DATE - lahoreTime;
-    const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    // Day 1 unlocks at 12am Dec 3 PKT, celebration at 12am Dec 4 PKT
+    // So, daysRemaining = 1 at Dec 3, 0 at Dec 4
+    const celebrationDate = new Date('2025-12-04T00:00:00');
+    const lastMessageDate = new Date('2025-12-03T00:00:00');
+    if (lahoreTime >= celebrationDate) return 0; // After Dec 4, all unlocked
+    if (lahoreTime >= lastMessageDate) return 1; // After Dec 3, only 1 day left
 
-    return Math.max(0, daysRemaining);
+    const timeDiff = lastMessageDate - lahoreTime;
+    const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 so Dec 2 = 2 days left
+    return Math.max(1, daysRemaining);
 }
 
 function isHeartUnlocked(day) {
@@ -125,17 +133,50 @@ function generateHearts() {
     const heartGrid = document.querySelector('.heart-grid');
     heartGrid.innerHTML = '';
 
+    // Heart-shaped constellation coordinates (normalized, centered, 0-1)
+    // Upright heart with point at top, bulges at bottom
+    const heartCoords = [
+        { x: 0.5, y: 0.82 }, // Top point (Day 7)
+        { x: 0.22, y: 0.62 }, // Left upper (Day 6)
+        { x: 0.78, y: 0.62 }, // Right upper (Day 5)
+        { x: 0.13, y: 0.32 }, // Far left (Day 4)
+        { x: 0.87, y: 0.32 }, // Far right (Day 3)
+        { x: 0.32, y: 0.08 }, // Left bottom (Day 2)
+        { x: 0.68, y: 0.08 }  // Right bottom (Day 1)
+    ];
+
     // Sort messages in descending order (day 7 → day 1)
     const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
 
-    sortedMessages.forEach(msg => {
+    // Responsive size for iPhone screens
+    const gridW = Math.min(window.innerWidth, 400);
+    const gridH = Math.min(window.innerHeight * 0.55, 400);
+
+    const daysRemaining = getDaysRemainingInLahore();
+    const currentDay = 7 - daysRemaining + 1;
+    const isOnBirthday = daysRemaining === 0;
+
+    sortedMessages.forEach((msg, i) => {
         const isLocked = !isHeartUnlocked(msg.day);
+        const isPastDay = msg.day < currentDay && daysRemaining > 0 && !isOnBirthday;
+        const isCurrentDay = msg.day === currentDay && daysRemaining > 0 && !isOnBirthday;
+        
+        let classes = `heart-wrapper ${isLocked ? 'locked' : ''}`;
+        if (isPastDay) classes += ' past-day';
+        if (isCurrentDay) classes += ' current-day';
+        if (isOnBirthday) classes += ' birthday-glow';
+        
         const wrapper = document.createElement('div');
-        wrapper.className = `heart-wrapper ${isLocked ? 'locked' : ''}`;
+        wrapper.className = classes;
         wrapper.setAttribute('role', 'button');
         wrapper.setAttribute('tabindex', '0');
         wrapper.setAttribute('aria-label', `Day ${msg.day}: ${msg.title}${isLocked ? ' (locked)' : ''}`);
         wrapper.setAttribute('data-day', msg.day);
+
+        // Position absolutely in the grid using heartCoords
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = `calc(${heartCoords[i].x * 100}% - 42.5px)`;
+        wrapper.style.top = `calc(${heartCoords[i].y * 100}% - 42.5px)`;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'heart-svg');
@@ -176,6 +217,96 @@ function generateHearts() {
 
         heartGrid.appendChild(wrapper);
     });
+
+    // Add cake in the center on birthday (Dec 4, daysRemaining = 0)
+    if (isOnBirthday) {
+        const cakeWrapper = document.createElement('div');
+        cakeWrapper.className = 'cake-wrapper';
+        cakeWrapper.setAttribute('role', 'button');
+        cakeWrapper.setAttribute('tabindex', '0');
+        cakeWrapper.setAttribute('aria-label', 'Click to celebrate your birthday');
+        cakeWrapper.style.position = 'absolute';
+        cakeWrapper.style.left = 'calc(50% - 42.5px)';
+        cakeWrapper.style.top = 'calc(50% - 42.5px)';
+        
+        // Cake SVG (matches heart aesthetic)
+        const cakeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        cakeSvg.setAttribute('class', 'cake-svg');
+        cakeSvg.setAttribute('viewBox', '0 0 100 120');
+        cakeSvg.setAttribute('aria-hidden', 'true');
+        
+        // Layer 1 (bottom layer)
+        const layer1 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        layer1.setAttribute('x', '10');
+        layer1.setAttribute('y', '70');
+        layer1.setAttribute('width', '80');
+        layer1.setAttribute('height', '30');
+        layer1.setAttribute('fill', '#ff6b8b');
+        layer1.setAttribute('rx', '5');
+        
+        // Layer 2 (middle layer)
+        const layer2 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        layer2.setAttribute('x', '15');
+        layer2.setAttribute('y', '50');
+        layer2.setAttribute('width', '70');
+        layer2.setAttribute('height', '25');
+        layer2.setAttribute('fill', '#ff4d6d');
+        layer2.setAttribute('rx', '4');
+        
+        // Layer 3 (top layer)
+        const layer3 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        layer3.setAttribute('x', '20');
+        layer3.setAttribute('y', '30');
+        layer3.setAttribute('width', '60');
+        layer3.setAttribute('height', '25');
+        layer3.setAttribute('fill', '#ff8fa3');
+        layer3.setAttribute('rx', '4');
+        
+        // Frosting swirl
+        const frosting = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        frosting.setAttribute('d', 'M 20 30 Q 30 15 50 15 Q 70 15 80 30');
+        frosting.setAttribute('fill', '#ffd1dc');
+        frosting.setAttribute('stroke', 'none');
+        
+        // Candle
+        const candle = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        candle.setAttribute('x', '47');
+        candle.setAttribute('y', '5');
+        candle.setAttribute('width', '6');
+        candle.setAttribute('height', '20');
+        candle.setAttribute('fill', '#fff0f5');
+        
+        // Flame
+        const flame = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        flame.setAttribute('d', 'M 50 5 Q 48 0 50 -5 Q 52 0 50 5');
+        flame.setAttribute('fill', '#ffa500');
+        
+        cakeSvg.appendChild(layer1);
+        cakeSvg.appendChild(layer2);
+        cakeSvg.appendChild(layer3);
+        cakeSvg.appendChild(frosting);
+        cakeSvg.appendChild(candle);
+        cakeSvg.appendChild(flame);
+        
+        cakeWrapper.appendChild(cakeSvg);
+        
+        cakeWrapper.addEventListener('click', () => {
+            triggerSurpriseAnimation();
+        });
+        
+        cakeWrapper.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                triggerSurpriseAnimation();
+            }
+        });
+        
+        heartGrid.appendChild(cakeWrapper);
+    }
+
+    // Set heartGrid to relative and fixed size for absolute positioning
+    heartGrid.style.position = 'relative';
+    heartGrid.style.width = gridW + 'px';
+    heartGrid.style.height = gridH + 'px';
 }
 
 // ===========================
@@ -218,7 +349,7 @@ document.addEventListener('keydown', (e) => {
 // SURPRISE ANIMATION (Dec 4 at 12:00 AM Lahore)
 // ===========================
 function triggerSurpriseAnimation() {
-    // Confetti effect
+    // Confetti effect only (no heart burst)
     for (let i = 0; i < 80; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
@@ -229,76 +360,51 @@ function triggerSurpriseAnimation() {
         confetti.style.fontSize = (Math.random() * 20 + 15) + 'px';
         confetti.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
         confetti.style.animationDelay = (Math.random() * 0.5) + 's';
+        confetti.style.pointerEvents = 'none'; // Don't block clicks
         document.body.appendChild(confetti);
-
         setTimeout(() => confetti.remove(), 5000);
     }
 
-    // Heart burst from center
-    for (let i = 0; i < 12; i++) {
-        const angle = (i / 12) * Math.PI * 2;
-        const distance = 200;
-        const tx = Math.cos(angle) * distance;
-        const ty = Math.sin(angle) * distance;
-
-        const heart = document.createElement('div');
-        heart.className = 'heart-burst';
-        heart.textContent = '❤️';
-        heart.style.left = '50%';
-        heart.style.top = '50%';
-        heart.style.setProperty('--tx', tx + 'px');
-        heart.style.setProperty('--ty', ty + 'px');
-        heart.style.animation = `burst 1.5s ease-out forwards`;
-        heart.style.animationDelay = (i * 0.05) + 's';
-        document.body.appendChild(heart);
-
-        setTimeout(() => heart.remove(), 2000);
-    }
-
-    // Show special message
+    // Show special message (modal, not blocking)
     const specialCard = document.createElement('div');
     specialCard.className = 'card';
     specialCard.style.position = 'fixed';
     specialCard.style.zIndex = '150';
+    specialCard.style.left = '50%';
+    specialCard.style.top = '50%';
+    specialCard.style.transform = 'translate(-50%, -50%)';
+    specialCard.id = 'birthday-card';
     specialCard.innerHTML = `
-        <h2>🎉 Happy Birthday Seemi! 🎉</h2>
+        <h2>🎉 Happy Birthday Shumi! 🎉</h2>
         <p>Your special day has arrived! May this year bring you endless joy, love, and all the happiness you deserve.</p>
-        <button class="close-btn" onclick="this.parentElement.remove();">Close</button>
+        <button class="close-btn">Close</button>
     `;
     document.body.appendChild(specialCard);
 
-    setTimeout(() => {
-        specialCard.style.opacity = '0';
-        specialCard.style.transition = 'opacity 1s ease';
-        setTimeout(() => specialCard.remove(), 1000);
-    }, 5000);
+    // Allow closing at any time
+    const closeBtn = specialCard.querySelector('.close-btn');
+    closeBtn.focus();
+    
+    const closeBirthdayCard = () => {
+        if (document.getElementById('birthday-card')) {
+            document.getElementById('birthday-card').remove();
+            generateHearts();
+        }
+    };
+    
+    closeBtn.addEventListener('click', closeBirthdayCard);
+    
+    const closeHandler = (e) => {
+        if (e.key === 'Escape' && document.getElementById('birthday-card')) {
+            closeBirthdayCard();
+        }
+    };
+    document.addEventListener('keydown', closeHandler);
 }
 
 function checkForSurpriseTime() {
-    const testOverride = getTestDaysOverride();
-    if (testOverride === 0) {
-        triggerSurpriseAnimation();
-        return true;
-    }
-
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-        timeZone: LAHORE_TIMEZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    });
-
-    const lahoreTime = formatter.format(now);
-    // Check if it's Dec 4, 2025 at midnight in Lahore
-    if (lahoreTime.includes('12/04/2025') && lahoreTime.includes('00:00')) {
-        triggerSurpriseAnimation();
-        return true;
-    }
+    // Don't auto-trigger anymore. Cake click will trigger.
+    // This function is kept for compatibility but does nothing.
     return false;
 }
 
