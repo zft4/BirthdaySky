@@ -14,13 +14,17 @@ body {
     justify-content: center;
 }
 
+/* Ensure full viewport coverage on mobile Safari (use dynamic viewport units) */
+html { min-height: 100dvh; background: linear-gradient(to bottom, #05010a 0%, #1c0320 50%, #3e0e28 100%); }
+body { min-height: 100dvh; }
+
 /* --- 2. The Starry Sky --- */
 canvas {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh; /* prefer dynamic viewport height on mobile */
     z-index: 0;
     filter: blur(0.3px) contrast(1.1);
 }

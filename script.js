@@ -32,10 +32,11 @@ const ctx = canvas.getContext('2d');
 let width, height, stars = [];
 
 function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
+    // Prefer visualViewport when available to avoid mobile Safari bottom-bar issues
+    width = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    canvas.width = Math.max(300, Math.floor(width));
+    canvas.height = Math.max(300, Math.floor(height));
     createStars();
 }
 
@@ -80,6 +81,14 @@ animateStars();
 // ===========================
 // TIMEZONE & UNLOCKING LOGIC
 // ===========================
+// Track last focused heart and whether the last interaction was from keyboard
+let lastFocusedHeart = null;
+let lastInteractionWasKeyboard = false;
+
+// Track interaction type to decide whether to restore focus on close
+window.addEventListener('keydown', () => { lastInteractionWasKeyboard = true; });
+window.addEventListener('mousedown', () => { lastInteractionWasKeyboard = false; });
+
 function getDaysRemainingInLahore() {
     const testOverride = getTestDaysOverride();
     if (testOverride !== null) {
@@ -135,21 +144,40 @@ function getUnlockedDays() {
 function generateHearts() {
     const heartGrid = document.querySelector('.heart-grid');
     heartGrid.innerHTML = '';
+    // lastFocusedHeart is global so modal open/close can use it
 
-    // Normalized coordinates for an upright heart (percent-based, avoids overlap)
+    // Normalized coordinates for an upright heart (percent-based)
     const heartCoords = [
-        { x: 0.5, y: 0.82 }, // Top center (Day 7)
-        { x: 0.22, y: 0.62 }, // Left upper (Day 6)
-        { x: 0.78, y: 0.62 }, // Right upper (Day 5)
-        { x: 0.13, y: 0.32 }, // Far left (Day 4)
-        { x: 0.87, y: 0.32 }, // Far right (Day 3)
-        { x: 0.32, y: 0.08 }, // Left bottom (Day 2)
-        { x: 0.68, y: 0.08 }  // Right bottom (Day 1)
+        { x: 0.5, y: 0.08 }, // Top center (Day 7)
+        { x: 0.22, y: 0.22 }, // Left upper (Day 6)
+        { x: 0.78, y: 0.22 }, // Right upper (Day 5)
+        { x: 0.13, y: 0.46 }, // Far left (Day 4)
+        { x: 0.87, y: 0.46 }, // Far right (Day 3)
+        { x: 0.32, y: 0.72 }, // Left lower (Day 2)
+        { x: 0.68, y: 0.72 }  // Right lower (Day 1)
     ];
 
-    // Responsive size for iPhone screens (used to size the grid container)
-    const gridW = Math.min(window.innerWidth, 420);
-    const gridH = Math.min(window.innerHeight * 0.55, 420);
+    // Use visualViewport when available for more accurate mobile sizing
+    const viewportW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    const viewportH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    // Responsive size for grid container: on small screens use more vertical space to avoid 'sandwiching'
+    const gridW = Math.min(viewportW * 0.95, 420);
+    const gridH = viewportW < 600 ? Math.min(viewportH * 0.78, 520) : Math.min(viewportH * 0.55, 420);
+
+    // For narrow screens, use alternate coordinates that spread hearts more vertically
+    let coords = heartCoords;
+    if (viewportW < 600) {
+        coords = [
+            { x: 0.5, y: 0.06 },
+            { x: 0.18, y: 0.22 },
+            { x: 0.82, y: 0.22 },
+            { x: 0.12, y: 0.44 },
+            { x: 0.88, y: 0.44 },
+            { x: 0.32, y: 0.72 },
+            { x: 0.68, y: 0.9 }
+        ];
+    }
 
     // Sort messages in descending order (day 7 → day 1)
     const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
@@ -197,8 +225,8 @@ function generateHearts() {
         // Position absolutely in the grid using normalized coordinates (percent). Use position mapping.
         wrapper.style.position = 'absolute';
         const coordIndex = positionForDay[msg.day] !== undefined ? positionForDay[msg.day] : i;
-        wrapper.style.left = `calc(${heartCoords[coordIndex].x * 100}% - 42.5px)`;
-        wrapper.style.top = `calc(${heartCoords[coordIndex].y * 100}% - 42.5px)`;
+        wrapper.style.left = `calc(${coords[coordIndex].x * 100}% - 42.5px)`;
+        wrapper.style.top = `calc(${coords[coordIndex].y * 100}% - 42.5px)`;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'heart-svg');
@@ -226,13 +254,17 @@ function generateHearts() {
         }
 
         wrapper.addEventListener('click', () => {
+            lastInteractionWasKeyboard = false;
             if (!isLocked) {
+                lastFocusedHeart = wrapper;
                 openModal(msg.title, msg.text);
             }
         });
 
         wrapper.addEventListener('keypress', (e) => {
             if ((e.key === 'Enter' || e.key === ' ') && !isLocked) {
+                lastInteractionWasKeyboard = true;
+                lastFocusedHeart = wrapper;
                 openModal(msg.title, msg.text);
             }
         });
@@ -364,8 +396,26 @@ function closeModal() {
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
 
-    // Return focus to the last clicked heart
-    document.querySelector('.heart-wrapper:not(.locked)').focus();
+    // Return focus to the last clicked/focused heart only if the user used the keyboard
+    try {
+        if (lastInteractionWasKeyboard && lastFocusedHeart && document.body.contains(lastFocusedHeart) && !lastFocusedHeart.classList.contains('locked')) {
+            lastFocusedHeart.focus();
+        } else {
+            // Otherwise move focus to the body/documentElement to avoid leaving a persistent focus ring
+            try {
+                document.body.setAttribute('tabindex', '-1');
+                document.body.focus();
+                document.body.removeAttribute('tabindex');
+            } catch (e) {
+                try { document.documentElement.focus(); } catch (e) {}
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+    lastFocusedHeart = null;
+    // regenerate hearts to ensure layout/state is up-to-date after closing
+    try { generateHearts(); } catch (e) {}
 }
 
 // Close modal on Esc key
@@ -397,42 +447,10 @@ function triggerSurpriseAnimation() {
         document.body.appendChild(confetti);
         setTimeout(() => confetti.remove(), 5000);
     }
+    // Show the birthday message using the same modal overlay (so background blurs)
+    openModal('🎉 Happy Birthday Shumi! 🎉', 'Your special day has arrived! May this year bring you endless joy, love, and all the happiness you deserve.');
 
-    // Show special message (modal, not blocking)
-    const specialCard = document.createElement('div');
-    specialCard.className = 'card';
-    specialCard.style.position = 'fixed';
-    specialCard.style.zIndex = '150';
-    specialCard.style.left = '50%';
-    specialCard.style.top = '50%';
-    specialCard.style.transform = 'translate(-50%, -50%)';
-    specialCard.id = 'birthday-card';
-    specialCard.innerHTML = `
-        <h2>🎉 Happy Birthday Shumi! 🎉</h2>
-        <p>Your special day has arrived! May this year bring you endless joy, love, and all the happiness you deserve.</p>
-        <button class="close-btn">Close</button>
-    `;
-    document.body.appendChild(specialCard);
-
-    // Allow closing at any time
-    const closeBtn = specialCard.querySelector('.close-btn');
-    closeBtn.focus();
-    
-    const closeBirthdayCard = () => {
-        if (document.getElementById('birthday-card')) {
-            document.getElementById('birthday-card').remove();
-            generateHearts();
-        }
-    };
-    
-    closeBtn.addEventListener('click', closeBirthdayCard);
-    
-    const closeHandler = (e) => {
-        if (e.key === 'Escape' && document.getElementById('birthday-card')) {
-            closeBirthdayCard();
-        }
-    };
-    document.addEventListener('keydown', closeHandler);
+    // Note: modal close will regenerate hearts via closeModal
 }
 
 function checkForSurpriseTime() {

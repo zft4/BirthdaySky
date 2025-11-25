@@ -11,6 +11,11 @@ A beautiful, personalized countdown website to celebrate a special birthday on D
 - **Glassmorphic UI**: Modern, frosted-glass modal cards with smooth animations
 - **Starry Background**: Animated canvas with twinkling stars and subtle glow effects
 
+Recent fixes (Nov 25, 2025):
+- Cake click now opens the same blurred modal as hearts (improves readability).
+- Better mobile spacing: hearts use mobile-specific coordinates and the grid uses visualViewport where available to avoid the "sandwiching" effect.
+- Canvas sizing improved to reduce iOS Safari bottom white banner (`100dvh` in CSS + visualViewport in JS).
+
 ## 📋 Project Structure
 
 ```
