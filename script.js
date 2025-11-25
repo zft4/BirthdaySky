@@ -350,7 +350,6 @@ function generateHearts() {
         cakeSvg.appendChild(candle);
         cakeSvg.appendChild(flame);
         
-        cakeWrapper.appendChild(cakeSvg);
         
         cakeWrapper.addEventListener('click', () => {
             triggerSurpriseAnimation();
@@ -362,7 +361,12 @@ function generateHearts() {
             }
         });
         
-        heartGrid.appendChild(cakeWrapper);
+        cakeWrapper.appendChild(cakeSvg);
+
+        // Append cake to `body` and keep it fixed at viewport center so it doesn't
+        // get affected by the heart-grid container. Ensure it's above other elements.
+        cakeWrapper.style.zIndex = '160';
+        document.body.appendChild(cakeWrapper);
     }
 
     // Set heartGrid to relative and fixed size for absolute positioning
