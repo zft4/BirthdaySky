@@ -227,8 +227,10 @@ function generateHearts() {
         // heartCoords are normalized 0..1; convert to offset from center (-0.5..0.5) and scale by gridW/gridH
         const nx = heartCoords[coordIndex].x - 0.5; // -0.5..0.5
         const ny = heartCoords[coordIndex].y - 0.5; // -0.5..0.5
-        const offsetX = Math.round(nx * gridW);
-        const offsetY = Math.round(ny * gridH);
+        // Apply a small spread multiplier on narrow viewports so hearts sit further from center
+        const spread = (viewportW && viewportW < 600) ? 1.35 : 1.0;
+        const offsetX = Math.round(nx * gridW * spread);
+        const offsetY = Math.round(ny * gridH * spread);
         wrapper.style.left = `calc(50% + ${offsetX}px - 42.5px)`;
         wrapper.style.top = `calc(50% + ${offsetY}px - 42.5px)`;
 
