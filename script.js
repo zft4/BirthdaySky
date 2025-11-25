@@ -373,6 +373,23 @@ function generateHearts() {
     heartGrid.style.transform = 'translate(-50%, -50%)';
     heartGrid.style.width = gridW + 'px';
     heartGrid.style.height = gridH + 'px';
+
+    // Ensure the cake (if present) is placed exactly at the heart-grid center
+    // This aligns the cake to the constellation center on any device without altering hearts
+    try {
+        const cakeEl = heartGrid.querySelector('.cake-wrapper');
+        if (cakeEl) {
+            const rect = heartGrid.getBoundingClientRect();
+            const centerX = Math.round(rect.left + rect.width / 2);
+            const centerY = Math.round(rect.top + rect.height / 2);
+            cakeEl.style.position = 'fixed';
+            cakeEl.style.left = centerX + 'px';
+            cakeEl.style.top = centerY + 'px';
+            cakeEl.style.transform = 'translate(-50%, -50%)';
+        }
+    } catch (e) {
+        // ignore layout read errors
+    }
 }
 
 // ===========================
