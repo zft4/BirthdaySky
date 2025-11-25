@@ -220,11 +220,17 @@ function generateHearts() {
         wrapper.setAttribute('aria-label', `Day ${msg.day}: ${msg.title}${isLocked ? ' (locked)' : ''}`);
         wrapper.setAttribute('data-day', msg.day);
 
-        // Position absolutely in the grid using normalized coordinates (percent)
+        // Position absolutely in the grid using coordinates relative to the grid center
+        // Compute pixel offsets so the cake (and heart 1) stay at the absolute center of the viewport
         wrapper.style.position = 'absolute';
         const coordIndex = positionForDay[msg.day] !== undefined ? positionForDay[msg.day] : i;
-        wrapper.style.left = `calc(${heartCoords[coordIndex].x * 100}% - 42.5px)`;
-        wrapper.style.top = `calc(${heartCoords[coordIndex].y * 100}% - 42.5px)`;
+        // heartCoords are normalized 0..1; convert to offset from center (-0.5..0.5) and scale by gridW/gridH
+        const nx = heartCoords[coordIndex].x - 0.5; // -0.5..0.5
+        const ny = heartCoords[coordIndex].y - 0.5; // -0.5..0.5
+        const offsetX = Math.round(nx * gridW);
+        const offsetY = Math.round(ny * gridH);
+        wrapper.style.left = `calc(50% + ${offsetX}px - 42.5px)`;
+        wrapper.style.top = `calc(50% + ${offsetY}px - 42.5px)`;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'heart-svg');
@@ -279,9 +285,11 @@ function generateHearts() {
         cakeWrapper.setAttribute('role', 'button');
         cakeWrapper.setAttribute('tabindex', '0');
         cakeWrapper.setAttribute('aria-label', 'Click to celebrate your birthday');
-        cakeWrapper.style.position = 'absolute';
-        cakeWrapper.style.left = 'calc(50% - 42.5px)';
-        cakeWrapper.style.top = 'calc(50% - 42.5px)';
+        // Place cake at the absolute center of the viewport so it's always centered on any device
+        cakeWrapper.style.position = 'fixed';
+        cakeWrapper.style.left = '50%';
+        cakeWrapper.style.top = '50%';
+        cakeWrapper.style.transform = 'translate(-50%, -50%)';
         
         // Cake SVG (matches heart aesthetic)
         const cakeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
