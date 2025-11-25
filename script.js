@@ -153,9 +153,14 @@ function generateHearts() {
         { x: 0.68, y: 0.08 }  // Right bottom (Day 1)
     ];
 
-    // Responsive size for iPhone screens (used to size the grid container)
-    const gridW = Math.min(window.innerWidth, 420);
-    const gridH = Math.min(window.innerHeight * 0.55, 420);
+    // Use visualViewport when available for accurate mobile sizing
+    const viewportW = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    const viewportH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    // Responsive size for grid container
+    const gridW = Math.min(viewportW * 0.95, 420);
+    // On narrow screens use less vertical space to avoid big empty gaps above/below
+    const gridH = viewportW < 600 ? Math.min(viewportH * 0.58, 520) : Math.min(viewportH * 0.55, 420);
 
     // Sort messages in descending order (day 7 → day 1)
     const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
