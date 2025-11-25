@@ -32,8 +32,10 @@ const ctx = canvas.getContext('2d');
 let width, height, stars = [];
 
 function resize() {
-    width = window.innerWidth;
-    height = window.innerHeight;
+    // Prefer the visual viewport on mobile so canvas matches the visible area
+    const vv = window.visualViewport;
+    width = vv ? Math.floor(vv.width) : window.innerWidth;
+    height = vv ? Math.floor(vv.height) : window.innerHeight;
     canvas.width = width;
     canvas.height = height;
     createStars();
@@ -74,6 +76,13 @@ function animateStars() {
 }
 
 window.addEventListener('resize', resize);
+// Also respond to visualViewport size changes (mobile browser chrome showing/hiding)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        resize();
+        try { generateHearts(); } catch (e) {}
+    });
+}
 resize();
 animateStars();
 
@@ -349,7 +358,11 @@ function generateHearts() {
     }
 
     // Set heartGrid to relative and fixed size for absolute positioning
-    heartGrid.style.position = 'relative';
+    // Center the heart grid in the visible viewport so it adapts to any mobile device
+    heartGrid.style.position = 'fixed';
+    heartGrid.style.left = '50%';
+    heartGrid.style.top = '50%';
+    heartGrid.style.transform = 'translate(-50%, -50%)';
     heartGrid.style.width = gridW + 'px';
     heartGrid.style.height = gridH + 'px';
 }
