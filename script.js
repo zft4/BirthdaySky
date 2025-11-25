@@ -363,10 +363,33 @@ function generateHearts() {
         
         cakeWrapper.appendChild(cakeSvg);
 
-        // Append cake to `body` and keep it fixed at viewport center so it doesn't
-        // get affected by the heart-grid container. Ensure it's above other elements.
+        // Append cake to `body` and position it relative to the constellation center
+        // Compute the vertical midpoint between the top row (days 7 & 6) and heart 1,
+        // and place the cake horizontally centered over the constellation.
         cakeWrapper.style.zIndex = '160';
         document.body.appendChild(cakeWrapper);
+        try {
+            const rect = heartGrid.getBoundingClientRect();
+            const coord7 = heartCoords[positionForDay[7]] || heartCoords[0];
+            const coord6 = heartCoords[positionForDay[6]] || heartCoords[1];
+            const coord1 = heartCoords[positionForDay[1]] || heartCoords[6];
+            const y7 = rect.top + coord7.y * rect.height;
+            const y6 = rect.top + coord6.y * rect.height;
+            const rowMidY = (y7 + y6) / 2;
+            const y1 = rect.top + coord1.y * rect.height;
+            const cakeY = Math.round((rowMidY + y1) / 2);
+            const centerX = Math.round(rect.left + rect.width / 2);
+            cakeWrapper.style.position = 'fixed';
+            cakeWrapper.style.left = centerX + 'px';
+            cakeWrapper.style.top = cakeY + 'px';
+            cakeWrapper.style.transform = 'translate(-50%, -50%)';
+        } catch (e) {
+            // fallback: keep cake centered in viewport
+            cakeWrapper.style.position = 'fixed';
+            cakeWrapper.style.left = '50%';
+            cakeWrapper.style.top = '50%';
+            cakeWrapper.style.transform = 'translate(-50%, -50%)';
+        }
     }
 
     // Set heartGrid to relative and fixed size for absolute positioning
