@@ -154,6 +154,20 @@ function generateHearts() {
     // Sort messages in descending order (day 7 → day 1)
     const sortedMessages = [...MESSAGES].sort((a, b) => b.day - a.day);
 
+    // Position mapping requested by user: map each day to a different coordinate index
+    // Original coord indices: 0->day7,1->day6,2->day5,3->day4,4->day3,5->day2,6->day1
+    // New placement: day7->where day2 was (index 5), day6->where day1 was (6), day5->where day4 was (3),
+    // day4->where day3 was (4), day3->where day6 was (1), day2->where day5 was (2), day1->where day7 was (0)
+    const positionForDay = {
+        1: 0,
+        2: 2,
+        3: 1,
+        4: 4,
+        5: 3,
+        6: 6,
+        7: 5
+    };
+
     const daysRemaining = getDaysRemainingInLahore();
     // Current day is the heart that was just unlocked (the one equal to daysRemaining)
     // E.g., if daysRemaining=6, heart 6 was just unlocked, so currentDay = 6
@@ -180,10 +194,11 @@ function generateHearts() {
         wrapper.setAttribute('aria-label', `Day ${msg.day}: ${msg.title}${isLocked ? ' (locked)' : ''}`);
         wrapper.setAttribute('data-day', msg.day);
 
-        // Position absolutely in the grid using normalized coordinates (percent)
+        // Position absolutely in the grid using normalized coordinates (percent). Use position mapping.
         wrapper.style.position = 'absolute';
-        wrapper.style.left = `calc(${heartCoords[i].x * 100}% - 42.5px)`;
-        wrapper.style.top = `calc(${heartCoords[i].y * 100}% - 42.5px)`;
+        const coordIndex = positionForDay[msg.day] !== undefined ? positionForDay[msg.day] : i;
+        wrapper.style.left = `calc(${heartCoords[coordIndex].x * 100}% - 42.5px)`;
+        wrapper.style.top = `calc(${heartCoords[coordIndex].y * 100}% - 42.5px)`;
 
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'heart-svg');
@@ -329,8 +344,19 @@ function openModal(title, text) {
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
 
+    // Remove focus from any heart so the focus ring doesn't persist behind it
+    try {
+        const active = document.activeElement;
+        if (active && active.classList && active.classList.contains('heart-wrapper')) {
+            active.blur();
+        }
+    } catch (e) {
+        // ignore
+    }
+
     // Focus the close button for accessibility
-    document.querySelector('.close-btn').focus();
+    const closeBtn = document.querySelector('.close-btn');
+    if (closeBtn) closeBtn.focus();
 }
 
 function closeModal() {
