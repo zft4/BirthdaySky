@@ -370,15 +370,26 @@ function generateHearts() {
         document.body.appendChild(cakeWrapper);
         try {
             const rect = heartGrid.getBoundingClientRect();
+            // Use visualViewport when available to compute the viewport center
+            const vv = window.visualViewport;
+            const vpLeft = vv ? vv.offsetLeft || vv.pageLeft || 0 : 0;
+            const vpTop = vv ? vv.offsetTop || vv.pageTop || 0 : 0;
+            const vpWidth = vv ? vv.width : window.innerWidth;
+            const vpHeight = vv ? vv.height : window.innerHeight;
+            const centerX = Math.round(vpLeft + vpWidth / 2);
+            const centerY = Math.round(vpTop + vpHeight / 2);
+
             const coord7 = heartCoords[positionForDay[7]] || heartCoords[0];
             const coord6 = heartCoords[positionForDay[6]] || heartCoords[1];
             const coord1 = heartCoords[positionForDay[1]] || heartCoords[6];
-            const y7 = rect.top + coord7.y * rect.height;
-            const y6 = rect.top + coord6.y * rect.height;
+
+            // Compute Y positions relative to the viewport center using the same gridH used for hearts
+            const y7 = centerY + Math.round((coord7.y - 0.5) * gridH);
+            const y6 = centerY + Math.round((coord6.y - 0.5) * gridH);
             const rowMidY = (y7 + y6) / 2;
-            const y1 = rect.top + coord1.y * rect.height;
+            const y1 = centerY + Math.round((coord1.y - 0.5) * gridH);
             const cakeY = Math.round((rowMidY + y1) / 2);
-            const centerX = Math.round(rect.left + rect.width / 2);
+
             cakeWrapper.style.position = 'fixed';
             cakeWrapper.style.left = centerX + 'px';
             cakeWrapper.style.top = cakeY + 'px';
